@@ -241,7 +241,8 @@ def filter_job(job_text: str) -> Dict:
 # ============================================================================
 
 def send_application_email(company: str, position: str, cover_letter: str,
-                          resume_path: Optional[str] = None, test_mode: bool = True) -> Dict:
+                          resume_path: Optional[str] = None, test_mode: bool = True,
+                          contact_info: Dict = None) -> Dict:
     """
     Create email draft (TEST MODE) or send application email via Gmail.
 
@@ -251,6 +252,7 @@ def send_application_email(company: str, position: str, cover_letter: str,
         cover_letter: Cover letter text
         resume_path: Optional path to resume PDF
         test_mode: If True, saves as draft instead of sending
+        contact_info: Dict with hiring manager's email, phone, name
 
     Returns:
         dict with status and message
@@ -260,7 +262,14 @@ def send_application_email(company: str, position: str, cover_letter: str,
 
     try:
         subject = f"Application for {position}"
-        recipient = EMAIL_USER  # TESTING: Will be extracted from job posting in production
+
+        # Use hiring manager's contact info if available
+        if contact_info and contact_info.get('email'):
+            recipient = contact_info['email']
+            recipient_name = contact_info.get('name', 'Hiring Manager')
+        else:
+            recipient = "careers@company.com"
+            recipient_name = "Hiring Manager"
 
         if test_mode:
             # TEST MODE: Save as draft file for review
@@ -270,7 +279,12 @@ def send_application_email(company: str, position: str, cover_letter: str,
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             draft_file = draft_dir / f"{timestamp}_{company.replace(' ', '_')}_draft.txt"
 
-            draft_content = f"""TO: {recipient}
+            # Format contact section
+            contact_section = f"TO: {recipient_name} <{recipient}>"
+            if contact_info and contact_info.get('phone'):
+                contact_section += f"\nPHONE: {contact_info['phone']}"
+
+            draft_content = f"""{contact_section}
 SUBJECT: {subject}
 ATTACHMENTS: {resume_path if resume_path else 'None'}
 
@@ -397,17 +411,23 @@ class JobSniper:
         print(f"  📋 Recommendation: {recommendation.upper()}")
 
         # Step 6: Auto-reject if fit score too low
-        if fit_score < 70:
+        if fit_score < 60:  # Lowered threshold to allow more jobs through for review
             return {
                 "status": "rejected",
                 "reason": f"Fit score too low ({fit_score}/100)",
                 "analysis": analysis_result
             }
 
+        # Step 6.5: Extract contact information
+        from job_scanner import extract_contact_info
+        contact_info = extract_contact_info(job_text)
+        if contact_info:
+            print(f"  📧 Contact Info: {contact_info}")
+
         # Step 7: Generate application materials
         print(f"\n  📝 Generating application materials...")
         materials = self._generate_application_materials(
-            company, position, job_text, analysis_result
+            company, position, job_text, analysis_result, contact_info
         )
 
         # Step 8: Check automation level
@@ -422,7 +442,8 @@ class JobSniper:
                 position=position,
                 cover_letter=materials.get("cover_letter", ""),
                 resume_path=materials.get("resume_path"),
-                test_mode=True  # Always draft mode for Pushover workflow
+                test_mode=True,  # Always draft mode for Pushover workflow
+                contact_info=contact_info
             )
 
             if send_result["status"] in ["sent", "draft_created"]:
@@ -506,22 +527,57 @@ Copy from draft file to send"""
                     else:
                         print(f"  ⚠️  Warning: Pushover status={pushover_status}, draft_exists={draft_exists}")
 
+                    # Add to job tracking database
+                    from job_status import add_job_status
+                    draft_filename = draft_path.split('/')[-1] if draft_path != 'N/A' else None
+                    if draft_filename:
+                        add_job_status(
+                            draft_filename=draft_filename,
+                            company=company,
+                            position=position,
+                            fit_score=fit_score,
+                            contact_info=contact_info,
+                            job_url=job_url_or_text if job_url_or_text.startswith('http') else None,
+                            source="job_sniper"
+                        )
+                        print(f"  ✅ Added to job tracking database")
+
                     print(f"  ✅ Draft created and sent to Pushover!")
                     return {
                         "status": "pushover_sent",
                         "fit_score": fit_score,
                         "materials": materials,
                         "draft_result": send_result,
+                        "draft_filename": draft_filename,
+                        "contact_info": contact_info,
                         "message": f"Draft created and sent to Pushover for manual sending"
                     }
                 else:
                     # Pushover not available - just save draft
+                    # Add to job tracking database
+                    from job_status import add_job_status
+                    draft_path = send_result.get('draft_path', 'N/A')
+                    draft_filename = draft_path.split('/')[-1] if draft_path != 'N/A' else None
+                    if draft_filename:
+                        add_job_status(
+                            draft_filename=draft_filename,
+                            company=company,
+                            position=position,
+                            fit_score=fit_score,
+                            contact_info=contact_info,
+                            job_url=job_url_or_text if job_url_or_text.startswith('http') else None,
+                            source="job_sniper"
+                        )
+                        print(f"  ✅ Added to job tracking database")
+
                     print(f"  ⚠️  Pushover not available - draft saved locally")
                     return {
                         "status": "draft_created",
                         "fit_score": fit_score,
                         "materials": materials,
                         "draft_result": send_result,
+                        "draft_filename": draft_filename,
+                        "contact_info": contact_info,
                         "message": f"Draft created locally at {send_result.get('draft_path', 'N/A')}"
                     }
             else:
@@ -581,8 +637,18 @@ Copy from draft file to send"""
             }
 
     def _generate_application_materials(self, company: str, position: str,
-                                       job_text: str, analysis: Dict) -> Dict:
+                                       job_text: str, analysis: Dict,
+                                       contact_info: Dict = None) -> Dict:
         """Generate tailored resume and cover letter"""
+
+        # Determine greeting based on contact info
+        if contact_info and contact_info.get('name'):
+            contact_name = contact_info['name']
+            # Clean up title suffixes (e.g., "Sarah Johnson, HR Manager" -> "Sarah Johnson")
+            contact_name = contact_name.split(',')[0].strip()
+            greeting = f'Dear {contact_name}'
+        else:
+            greeting = 'Dear Hiring Manager'
 
         # Generate cover letter via JARVIS
         cover_letter_prompt = f"""Write a professional cover letter for this job:
@@ -601,7 +667,7 @@ Job Analysis: {analysis.get('analysis', 'N/A')}
 
 Requirements:
 - Professional tone
-- Address as "Dear Hiring Manager"
+- Address as "{greeting}"
 - Keep under 250 words
 - Emphasize reliability, technical aptitude, and customer service potential
 - Mention specific job details from the posting"""

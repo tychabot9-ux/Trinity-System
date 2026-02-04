@@ -17,6 +17,7 @@
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --info: #3b82f6;
             --bg-dark: #0f172a;
             --bg-card: #1e293b;
             --text-primary: #f1f5f9;
@@ -49,6 +50,12 @@
             color: var(--primary);
         }
 
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
         .stats {
             display: flex;
             gap: 2rem;
@@ -61,8 +68,11 @@
         .stat-value {
             font-size: 1.5rem;
             font-weight: bold;
-            color: var(--success);
         }
+
+        .stat-value.pending { color: var(--warning); }
+        .stat-value.applied { color: var(--success); }
+        .stat-value.denied { color: var(--danger); }
 
         .stat-label {
             font-size: 0.875rem;
@@ -70,32 +80,205 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 2rem;
         }
 
-        .controls {
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-count {
+            background: var(--bg-card);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .jobs-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .job-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 2rem;
+            padding: 1.5rem;
+            transition: all 0.2s;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .job-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+        }
+
+        .job-title {
+            cursor: pointer;
+            transition: color 0.2s ease;
+            font-weight: 600;
+        }
+
+        .job-title:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .job-card-header {
             display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .job-info {
+            flex: 1;
+        }
+
+        .job-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            cursor: pointer;
+        }
+
+        .job-title:hover {
+            color: var(--primary);
+        }
+
+        .job-company {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .job-actions {
+            display: flex;
+            gap: 0.5rem;
             align-items: center;
         }
 
-        .search-box {
-            flex: 1;
-            min-width: 300px;
-            padding: 0.75rem 1rem;
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
+        .checkbox-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            transition: background 0.2s;
+        }
+
+        .checkbox-label:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .contact-info {
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.3);
             border-radius: 0.375rem;
-            color: var(--text-primary);
-            font-size: 1rem;
+            padding: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        .contact-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .contact-detail:last-child {
+            margin-bottom: 0;
+        }
+
+        .contact-icon {
+            color: var(--primary);
+        }
+
+        .fit-score {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .fit-high {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .fit-medium {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .fit-low {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .job-preview {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .job-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
         }
 
         .btn {
@@ -122,93 +305,9 @@
             color: white;
         }
 
-        .btn-icon {
-            padding: 0.5rem;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .drafts-grid {
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        .draft-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .draft-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
-        }
-
-        .draft-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 1rem;
-        }
-
-        .draft-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.25rem;
-        }
-
-        .draft-company {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        .fit-score {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .fit-high {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-        }
-
-        .fit-medium {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
-        }
-
-        .draft-preview {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            line-height: 1.5;
-            margin-bottom: 1rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .draft-meta {
-            display: flex;
-            gap: 1rem;
+        .btn-sm {
+            padding: 0.5rem 1rem;
             font-size: 0.75rem;
-            color: var(--text-secondary);
-            padding-top: 1rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .draft-actions {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
         }
 
         .modal {
@@ -238,7 +337,6 @@
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
-            position: relative;
         }
 
         .modal-header {
@@ -284,6 +382,12 @@
             line-height: 1.8;
             white-space: pre-wrap;
             margin: 1rem 0;
+        }
+
+        .draft-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
         }
 
         .copy-success {
@@ -356,165 +460,277 @@
                 gap: 1rem;
             }
 
-            .controls {
+            .header-actions {
                 flex-direction: column;
-            }
-
-            .search-box {
-                width: 100%;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="logo">🎯 Trinity Dashboard</div>
+        <div class="logo">🎯 Trinity Job Hunter</div>
         <div class="stats">
             <div class="stat">
-                <div class="stat-value" id="totalDrafts">0</div>
-                <div class="stat-label">Drafts</div>
+                <div class="stat-value pending" id="pendingCount">0</div>
+                <div class="stat-label">Pending</div>
             </div>
             <div class="stat">
-                <div class="stat-value" id="avgScore">0</div>
-                <div class="stat-label">Avg Score</div>
+                <div class="stat-value applied" id="appliedCount">0</div>
+                <div class="stat-label">Applied</div>
             </div>
             <div class="stat">
-                <div class="stat-value" id="todayCount">0</div>
-                <div class="stat-label">Today</div>
+                <div class="stat-value denied" id="deniedCount">0</div>
+                <div class="stat-label">Passed</div>
             </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-success" onclick="openSubmitModal()">➕ Submit Job</button>
+            <button class="btn btn-primary" onclick="openResumeModal()">📄 My Resume</button>
+            <button class="btn btn-primary" onclick="refreshJobs()">🔄 Refresh</button>
         </div>
     </div>
 
     <div class="container">
-        <div class="controls">
-            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search by company or position...">
-            <button class="btn btn-primary" onclick="refreshDrafts()">🔄 Refresh</button>
-            <button class="btn btn-icon" onclick="toggleAutoRefresh()" id="autoRefreshBtn" title="Auto-refresh every 30s">⏱️</button>
+        <!-- Pending Section -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>📋</span>
+                    <span>Pending Review</span>
+                    <span class="section-count" id="pendingSectionCount">0</span>
+                </div>
+            </div>
+            <div id="pendingJobs" class="jobs-grid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Loading jobs...</div>
+                </div>
+            </div>
         </div>
 
-        <div id="draftsContainer" class="drafts-grid">
-            <div class="loading">
-                <div class="spinner"></div>
-                <div>Loading drafts...</div>
+        <!-- Applied Section -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>✅</span>
+                    <span>Applied</span>
+                    <span class="section-count" id="appliedSectionCount">0</span>
+                </div>
             </div>
+            <div id="appliedJobs" class="jobs-grid"></div>
+        </div>
+
+        <!-- Denied/Passed Section -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>❌</span>
+                    <span>Passed / No Response</span>
+                    <span class="section-count" id="deniedSectionCount">0</span>
+                </div>
+            </div>
+            <div id="deniedJobs" class="jobs-grid"></div>
         </div>
     </div>
 
+    <!-- Draft Modal -->
     <div class="modal" id="draftModal">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <div class="modal-title" id="modalTitle">Loading...</div>
-                    <div class="draft-company" id="modalCompany"></div>
+                    <div class="job-company" id="modalCompany"></div>
                 </div>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
+                <div id="modalContactInfo"></div>
                 <div style="margin-bottom: 1rem;">
                     <strong>Subject:</strong> <span id="modalSubject"></span>
                 </div>
                 <div class="cover-letter" id="modalContent"></div>
                 <div class="draft-actions">
-                    <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
-                    <button class="btn btn-primary" onclick="openDraftFile()">📄 Open File</button>
+                    <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy Cover Letter</button>
+                    <button class="btn btn-primary" onclick="copyResume()">📄 Copy Resume</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="copy-success" id="copySuccess">
-        ✅ Copied to clipboard!
+    <!-- Resume Modal -->
+    <div class="modal" id="resumeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📄 Your Resume</div>
+                <button class="close-btn" onclick="closeResumeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="cover-letter" id="resumeContent" style="font-family: monospace;">Loading...</div>
+                <div class="draft-actions">
+                    <button class="btn btn-success" onclick="copyResumeText()">📋 Copy Resume</button>
+                    <button class="btn btn-primary" onclick="downloadResume()">💾 Download</button>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Submit Job Modal -->
+    <div class="modal" id="submitModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">➕ Submit New Job</div>
+                <button class="close-btn" onclick="closeSubmitModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Company Name</label>
+                    <input type="text" id="submitCompany" placeholder="e.g., Marriott Hotels" style="width: 100%; padding: 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 1rem;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Position Title</label>
+                    <input type="text" id="submitPosition" placeholder="e.g., Front Desk Agent" style="width: 100%; padding: 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 1rem;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Job Description or URL</label>
+                    <textarea id="submitDescription" rows="8" placeholder="Paste job description text or Indeed/LinkedIn URL..." style="width: 100%; padding: 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 1rem; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+                <div class="draft-actions">
+                    <button class="btn btn-success" onclick="submitJob()" id="submitBtn">🚀 Submit to Trinity</button>
+                    <button class="btn btn-secondary" onclick="closeSubmitModal()">Cancel</button>
+                </div>
+                <div id="submitStatus" style="margin-top: 1rem; padding: 1rem; border-radius: 8px; display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="copy-success" id="copySuccess">✅ Copied to clipboard!</div>
+
     <script>
-        let drafts = [];
         let currentDraft = null;
-        let autoRefresh = false;
-        let autoRefreshInterval = null;
+        let allJobs = { pending: [], applied: [], denied: [] };
 
-        // Load drafts on page load
         document.addEventListener('DOMContentLoaded', () => {
-            refreshDrafts();
-
-            // Search functionality
-            document.getElementById('searchBox').addEventListener('input', (e) => {
-                filterDrafts(e.target.value);
-            });
+            refreshJobs();
         });
 
-        async function refreshDrafts() {
+        async function refreshJobs() {
             try {
-                const response = await fetch('/api/drafts');
+                const response = await fetch('/api/jobs/organized');
                 const data = await response.json();
-                drafts = data.drafts || [];
-
-                updateStats(data.stats || {});
-                renderDrafts(drafts);
+                
+                allJobs = data;
+                updateStats(data.stats);
+                renderSection('pending', data.pending);
+                renderSection('applied', data.applied);
+                renderSection('denied', data.denied);
             } catch (error) {
-                console.error('Error loading drafts:', error);
-                showError('Failed to load drafts');
+                console.error('Error loading jobs:', error);
             }
         }
 
         function updateStats(stats) {
-            document.getElementById('totalDrafts').textContent = stats.total || 0;
-            document.getElementById('avgScore').textContent = stats.avg_score || 0;
-            document.getElementById('todayCount').textContent = stats.today || 0;
+            document.getElementById('pendingCount').textContent = stats.pending || 0;
+            document.getElementById('appliedCount').textContent = stats.applied || 0;
+            document.getElementById('deniedCount').textContent = stats.denied || 0;
         }
 
-        function renderDrafts(draftsToRender) {
-            const container = document.getElementById('draftsContainer');
+        function renderSection(status, jobs) {
+            const container = document.getElementById(`${status}Jobs`);
+            const countEl = document.getElementById(`${status}SectionCount`);
+            
+            countEl.textContent = jobs.length;
 
-            if (draftsToRender.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📭</div>
-                        <h2>No drafts yet</h2>
-                        <p>Trinity will create drafts here when jobs match your criteria</p>
-                    </div>
-                `;
+            if (jobs.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No jobs in this section</p></div>';
                 return;
             }
 
-            container.innerHTML = draftsToRender.map(draft => `
-                <div class="draft-card" onclick="openDraft('${draft.filename}')">
-                    <div class="draft-header">
-                        <div>
-                            <div class="draft-title">${draft.position}</div>
-                            <div class="draft-company">${draft.company}</div>
+            container.innerHTML = jobs.map(job => createJobCard(job, status)).join('');
+        }
+
+        function createJobCard(job, currentStatus) {
+            const fitClass = job.fit_score >= 80 ? 'fit-high' : job.fit_score >= 70 ? 'fit-medium' : 'fit-low';
+            
+            const contactInfo = job.contact_email || job.contact_phone || job.contact_name ? `
+                <div class="contact-info">
+                    <div class="contact-title">📧 Contact Information</div>
+                    ${job.contact_email ? `<div class="contact-detail"><span class="contact-icon">✉️</span> ${job.contact_email}</div>` : ''}
+                    ${job.contact_phone ? `<div class="contact-detail"><span class="contact-icon">📞</span> ${job.contact_phone}</div>` : ''}
+                    ${job.contact_name ? `<div class="contact-detail"><span class="contact-icon">👤</span> ${job.contact_name}</div>` : ''}
+                </div>
+            ` : '';
+
+            const checkboxes = currentStatus === 'pending' ? `
+                <div class="checkbox-container" onclick="event.stopPropagation()">
+                    <label class="checkbox-label">
+                        <input type="checkbox" onchange="markAsApplied('${job.draft_filename}')">
+                        <span>✅ Applied</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" onchange="markAsDenied('${job.draft_filename}')">
+                        <span>❌ Pass</span>
+                    </label>
+                </div>
+            ` : currentStatus === 'applied' ? `
+                <div class="checkbox-container" onclick="event.stopPropagation()">
+                    <label class="checkbox-label">
+                        <input type="checkbox" onchange="markAsDenied('${job.draft_filename}')">
+                        <span>❌ No Response</span>
+                    </label>
+                </div>
+            ` : '';
+
+            return `
+                <div class="job-card" onclick="openDraft('${job.draft_filename}')" title="Click to view cover letter">
+                    <div class="job-card-header">
+                        <div class="job-info">
+                            <div class="job-title">${job.position}</div>
+                            <div class="job-company">${job.company}</div>
                         </div>
-                        <div class="fit-score ${draft.fit_score >= 80 ? 'fit-high' : 'fit-medium'}">
-                            ${draft.fit_score}/100
+                        <div class="job-actions">
+                            ${checkboxes}
+                            <div class="fit-score ${fitClass}">${job.fit_score}/100</div>
                         </div>
                     </div>
-                    <div class="draft-preview">${draft.preview}</div>
-                    <div class="draft-meta">
-                        <span>📅 ${draft.date}</span>
-                        <span>📄 ${draft.filename}</span>
+                    ${contactInfo}
+                    ${job.preview ? `<div class="job-preview">${job.preview}</div>` : ''}
+                    <div class="job-meta">
+                        <span>📅 ${new Date(job.created_date).toLocaleDateString()}</span>
+                        <span>📄 ${job.draft_filename}</span>
                     </div>
                 </div>
-            `).join('');
+            `;
         }
 
-        function filterDrafts(searchTerm) {
-            if (!searchTerm) {
-                renderDrafts(drafts);
-                return;
+        async function markAsApplied(filename) {
+            await updateJobStatus(filename, 'applied');
+        }
+
+        async function markAsDenied(filename) {
+            await updateJobStatus(filename, 'denied');
+        }
+
+        async function updateJobStatus(filename, newStatus) {
+            try {
+                const response = await fetch('/api/job/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename, status: newStatus })
+                });
+
+                if (response.ok) {
+                    showCopySuccess(`✅ Marked as ${newStatus}`);
+                    setTimeout(refreshJobs, 500);
+                }
+            } catch (error) {
+                alert('Failed to update status');
             }
-
-            const filtered = drafts.filter(draft =>
-                draft.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                draft.position.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-
-            renderDrafts(filtered);
         }
 
         async function openDraft(filename) {
             try {
                 const response = await fetch(`/api/draft/${filename}`);
                 const data = await response.json();
-
                 currentDraft = data;
 
                 document.getElementById('modalTitle').textContent = data.position;
@@ -522,9 +738,25 @@
                 document.getElementById('modalSubject').textContent = `Application for ${data.position}`;
                 document.getElementById('modalContent').textContent = data.cover_letter;
 
+                // Show contact info if available
+                const job = [...allJobs.pending, ...allJobs.applied, ...allJobs.denied]
+                    .find(j => j.draft_filename === filename);
+                
+                if (job && (job.contact_email || job.contact_phone || job.contact_name)) {
+                    document.getElementById('modalContactInfo').innerHTML = `
+                        <div class="contact-info">
+                            <div class="contact-title">📧 Send Application To:</div>
+                            ${job.contact_email ? `<div class="contact-detail"><span class="contact-icon">✉️</span> ${job.contact_email}</div>` : ''}
+                            ${job.contact_phone ? `<div class="contact-detail"><span class="contact-icon">📞</span> ${job.contact_phone}</div>` : ''}
+                            ${job.contact_name ? `<div class="contact-detail"><span class="contact-icon">👤</span> ${job.contact_name}</div>` : ''}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('modalContactInfo').innerHTML = '';
+                }
+
                 document.getElementById('draftModal').classList.add('active');
             } catch (error) {
-                console.error('Error loading draft:', error);
                 alert('Failed to load draft');
             }
         }
@@ -535,79 +767,9 @@
 
         async function copyToClipboard() {
             const content = document.getElementById('modalContent').textContent;
-
-            try {
-                await navigator.clipboard.writeText(content);
-                showCopySuccess();
-            } catch (error) {
-                // Fallback for older browsers
-                const textarea = document.createElement('textarea');
-                textarea.value = content;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                showCopySuccess();
-            }
+            await copyText(content);
         }
 
-        function showCopySuccess() {
-            const successEl = document.getElementById('copySuccess');
-            successEl.classList.add('show');
-            setTimeout(() => {
-                successEl.classList.remove('show');
-            }, 3000);
-        }
-
-        function openDraftFile() {
-            if (currentDraft && currentDraft.filepath) {
-                window.open(`/draft-file/${currentDraft.filename}`, '_blank');
-            }
-        }
-
-        function toggleAutoRefresh() {
-            autoRefresh = !autoRefresh;
-            const btn = document.getElementById('autoRefreshBtn');
-
-            if (autoRefresh) {
-                btn.style.background = 'var(--success)';
-                btn.style.color = 'white';
-                autoRefreshInterval = setInterval(refreshDrafts, 30000);
-            } else {
-                btn.style.background = '';
-                btn.style.color = '';
-                if (autoRefreshInterval) {
-                    clearInterval(autoRefreshInterval);
-                }
-            }
-        }
-
-        function showError(message) {
-            const container = document.getElementById('draftsContainer');
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">⚠️</div>
-                    <h2>Error</h2>
-                    <p>${message}</p>
-                </div>
-            `;
-        }
-
-        // Close modal on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        });
-
-        // Close modal on backdrop click
-        document.getElementById('draftModal').addEventListener('click', (e) => {
-            if (e.target.id === 'draftModal') {
-                closeModal();
-            }
-        });
-
-        // Resume Modal Functions
         async function openResumeModal() {
             try {
                 const response = await fetch('/api/resume/formatted');
@@ -623,20 +785,37 @@
             document.getElementById('resumeModal').classList.remove('active');
         }
 
-        async function copyResume() {
+        async function copyResumeText() {
             const content = document.getElementById('resumeContent').textContent;
+            await copyText(content);
+        }
+
+        async function copyResume() {
+            const response = await fetch('/api/resume/formatted');
+            const data = await response.json();
+            await copyText(data.formatted_resume);
+        }
+
+        async function copyText(text) {
             try {
-                await navigator.clipboard.writeText(content);
+                await navigator.clipboard.writeText(text);
                 showCopySuccess();
             } catch (error) {
                 const textarea = document.createElement('textarea');
-                textarea.value = content;
+                textarea.value = text;
                 document.body.appendChild(textarea);
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
                 showCopySuccess();
             }
+        }
+
+        function showCopySuccess(message = '✅ Copied to clipboard!') {
+            const el = document.getElementById('copySuccess');
+            el.textContent = message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
         }
 
         function downloadResume() {
@@ -652,34 +831,97 @@
             URL.revokeObjectURL(url);
         }
 
-        // Add Resume button to header on load
-        window.addEventListener('DOMContentLoaded', (event) => {
-            const header = document.querySelector('.header');
-            const resumeBtn = document.createElement('button');
-            resumeBtn.className = 'btn btn-primary';
-            resumeBtn.textContent = '📄 My Resume';
-            resumeBtn.onclick = openResumeModal;
-            resumeBtn.style.marginLeft = 'auto';
-            header.appendChild(resumeBtn);
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeResumeModal();
+            }
         });
+
+        // Close modals on backdrop click
+        document.getElementById('draftModal').addEventListener('click', (e) => {
+            if (e.target.id === 'draftModal') closeModal();
+        });
+
+        document.getElementById('resumeModal').addEventListener('click', (e) => {
+            if (e.target.id === 'resumeModal') closeResumeModal();
+        });
+
+        document.getElementById('submitModal').addEventListener('click', (e) => {
+            if (e.target.id === 'submitModal') closeSubmitModal();
+        });
+
+        // Submit Job Modal Functions
+        function openSubmitModal() {
+            document.getElementById('submitModal').style.display = 'flex';
+            document.getElementById('submitCompany').value = '';
+            document.getElementById('submitPosition').value = '';
+            document.getElementById('submitDescription').value = '';
+            document.getElementById('submitStatus').style.display = 'none';
+        }
+
+        function closeSubmitModal() {
+            document.getElementById('submitModal').style.display = 'none';
+        }
+
+        async function submitJob() {
+            const company = document.getElementById('submitCompany').value.trim();
+            const position = document.getElementById('submitPosition').value.trim();
+            const description = document.getElementById('submitDescription').value.trim();
+            const statusDiv = document.getElementById('submitStatus');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (!company || !position || !description) {
+                statusDiv.style.display = 'block';
+                statusDiv.style.background = 'var(--danger)';
+                statusDiv.innerHTML = '❌ Please fill in all fields';
+                return;
+            }
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '⏳ Processing...';
+                statusDiv.style.display = 'block';
+                statusDiv.style.background = 'var(--info)';
+                statusDiv.innerHTML = '🔄 Trinity is analyzing this job...';
+
+                const response = await fetch('/job/apply', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ${TRINITY_PASSWORD}' // Note: In production, get from secure storage
+                    },
+                    body: JSON.stringify({
+                        job_url_or_text: description,
+                        company: company,
+                        position: position
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    statusDiv.style.background = 'var(--success)';
+                    statusDiv.innerHTML = '✅ Job submitted successfully! Check the Pending section.';
+
+                    // Clear form
+                    setTimeout(() => {
+                        closeSubmitModal();
+                        refreshJobs();
+                    }, 2000);
+                } else {
+                    statusDiv.style.background = 'var(--danger)';
+                    statusDiv.innerHTML = `❌ Error: ${result.detail || 'Unknown error'}`;
+                }
+            } catch (error) {
+                statusDiv.style.background = 'var(--danger)';
+                statusDiv.innerHTML = `❌ Error: ${error.message}`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Submit to Trinity';
+            }
+        }
     </script>
-
-    <!-- Resume Modal -->
-    <div class="modal" id="resumeModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">📄 Your Resume</div>
-                <button class="close-btn" onclick="closeResumeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="cover-letter" id="resumeContent" style="font-family: monospace; line-height: 1.6;">Loading...</div>
-                <div class="draft-actions">
-                    <button class="btn btn-success" onclick="copyResume()">📋 Copy Resume</button>
-                    <button class="btn btn-primary" onclick="downloadResume()">💾 Download TXT</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </body>
 </html>

@@ -84,21 +84,63 @@ def extract_contact_info(job_description: str) -> Dict:
 
 def scan_indeed(keywords: str, location: str) -> List[Dict]:
     """
-    Scan Indeed for jobs
-    Note: Indeed requires proper API access or Selenium for production
-    This is a simplified version showing the structure
+    Scan Indeed for jobs using RSS feed (lightweight, no browser needed)
     """
     jobs = []
 
     try:
-        # In production, use Indeed API or Selenium
-        # This is a placeholder showing the structure
-
-        # For now, return empty list
-        # TODO: Implement Indeed scraper with proper authentication
-
         print(f"  🔍 Scanning Indeed for: {keywords} in {location}")
-        print(f"  ⚠️  Indeed scraper needs API key or Selenium setup")
+
+        # Use Indeed RSS feed (public, no authentication needed)
+        search_query = keywords.replace(' ', '+')
+        location_query = location.replace(' ', '+')
+        rss_url = f"https://www.indeed.com/rss?q={search_query}&l={location_query}&radius=50"
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+
+        response = requests.get(rss_url, headers=headers, timeout=15)
+
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'xml')
+            items = soup.find_all('item')[:5]  # Limit to 5 jobs
+
+            for item in items:
+                try:
+                    title = item.find('title').text.strip() if item.find('title') else "Unknown Position"
+                    link = item.find('link').text.strip() if item.find('link') else ""
+                    description = item.find('description').text.strip() if item.find('description') else ""
+
+                    # Parse title (format: "Position - Company - Location")
+                    parts = title.split(' - ')
+                    position = parts[0] if len(parts) > 0 else title
+                    company = parts[1] if len(parts) > 1 else "Unknown Company"
+
+                    # Clean HTML from description
+                    desc_soup = BeautifulSoup(description, 'html.parser')
+                    clean_description = desc_soup.get_text()
+
+                    # Extract contact info
+                    contact_info = extract_contact_info(clean_description)
+
+                    jobs.append({
+                        'position': position,
+                        'company': company,
+                        'description': clean_description,
+                        'url': link,
+                        'contact_info': contact_info,
+                        'source': 'Indeed'
+                    })
+
+                    print(f"    ✅ Found: {company} - {position}")
+
+                except Exception as e:
+                    print(f"    ⚠️  Error parsing item: {e}")
+                    continue
+
+        else:
+            print(f"  ⚠️  Indeed returned status {response.status_code}")
 
     except Exception as e:
         print(f"  ❌ Indeed scan error: {e}")
@@ -107,16 +149,64 @@ def scan_indeed(keywords: str, location: str) -> List[Dict]:
 
 def scan_linkedin(keywords: str, location: str) -> List[Dict]:
     """
-    Scan LinkedIn for jobs
-    Note: Requires LinkedIn API access
+    Scan LinkedIn for jobs using public job search (lightweight)
     """
     jobs = []
 
     try:
         print(f"  🔍 Scanning LinkedIn for: {keywords} in {location}")
-        print(f"  ⚠️  LinkedIn scraper needs API key")
 
-        # TODO: Implement LinkedIn scraper
+        # Use LinkedIn's public job search
+        search_query = keywords.replace(' ', '%20')
+        location_query = location.replace(' ', '%20')
+        search_url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={search_query}&location={location_query}&distance=50&start=0"
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+
+        response = requests.get(search_url, headers=headers, timeout=15)
+
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            job_cards = soup.find_all('li', limit=5)
+
+            for card in job_cards:
+                try:
+                    # Extract basic info
+                    title_elem = card.find('h3', class_='base-search-card__title')
+                    company_elem = card.find('h4', class_='base-search-card__subtitle')
+                    link_elem = card.find('a', class_='base-card__full-link')
+
+                    if not all([title_elem, company_elem, link_elem]):
+                        continue
+
+                    position = title_elem.text.strip()
+                    company = company_elem.text.strip()
+                    url = link_elem.get('href', '')
+
+                    # Get job description (requires separate request)
+                    job_id_match = url.split('/')[-1].split('?')[0] if url else None
+                    description = "Visit LinkedIn for full details"
+
+                    jobs.append({
+                        'position': position,
+                        'company': company,
+                        'description': description,
+                        'url': url,
+                        'contact_info': {},
+                        'source': 'LinkedIn'
+                    })
+
+                    print(f"    ✅ Found: {company} - {position}")
+
+                except Exception as e:
+                    print(f"    ⚠️  Error parsing LinkedIn card: {e}")
+                    continue
+
+        else:
+            print(f"  ⚠️  LinkedIn returned status {response.status_code}")
 
     except Exception as e:
         print(f"  ❌ LinkedIn scan error: {e}")
@@ -186,7 +276,11 @@ def run_scan():
     print(f"🔍 Keywords: {', '.join(SEARCH_KEYWORDS)}")
     print(f"💰 Min Salary: ${MIN_SALARY}/hr\n")
 
+    # Import job status checker
+    from job_status import check_duplicate_application
+
     all_jobs = []
+    filtered_jobs = []
 
     # Scan each keyword
     for keyword in SEARCH_KEYWORDS:
@@ -205,17 +299,36 @@ def run_scan():
 
     print(f"\n📊 Found {len(all_jobs)} total jobs")
 
+    # Filter out duplicates
+    for job in all_jobs:
+        duplicate = check_duplicate_application(job['company'], job['position'])
+        if duplicate:
+            print(f"  ⏭️  Skipping duplicate: {job['company']} - {job['position']}")
+        else:
+            filtered_jobs.append(job)
+
+    print(f"📋 {len(filtered_jobs)} new jobs after filtering")
+
     # Submit to Trinity for processing
-    if all_jobs:
+    if filtered_jobs:
         print(f"\n📤 Submitting to Trinity for analysis...")
 
-        for job in all_jobs:
+        for job in filtered_jobs:
             print(f"  • {job['company']} - {job['position']}")
             result = submit_to_trinity(job)
             print(f"    Status: {result.get('status', 'unknown')}")
             time.sleep(1)  # Rate limiting
 
     print(f"\n✅ Scan complete!\n")
+
+def run_scheduled_scan():
+    """Wrapper for scheduled scans with error handling"""
+    try:
+        run_scan()
+    except Exception as e:
+        print(f"❌ Scheduled scan error: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     # Test run

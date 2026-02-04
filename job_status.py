@@ -193,7 +193,7 @@ def check_duplicate_application(company: str, position: str) -> Optional[Dict]:
         FROM job_statuses
         WHERE LOWER(company) = LOWER(?)
         AND LOWER(position) = LOWER(?)
-        AND status IN ('pending', 'applied')
+        AND status IN ('pending', 'applied', 'denied')
         ORDER BY created_date DESC
         LIMIT 1
     """, (company, position))
