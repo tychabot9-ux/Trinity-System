@@ -677,6 +677,17 @@
                         <input type="checkbox" onchange="markAsDenied('${job.draft_filename}')">
                         <span>❌ No Response</span>
                     </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" onchange="markAsPending('${job.draft_filename}')">
+                        <span>↩️ Undo</span>
+                    </label>
+                </div>
+            ` : currentStatus === 'denied' ? `
+                <div class="checkbox-container" onclick="event.stopPropagation()">
+                    <label class="checkbox-label">
+                        <input type="checkbox" onchange="markAsApplied('${job.draft_filename}')">
+                        <span>↩️ Move to Applied</span>
+                    </label>
                 </div>
             ` : '';
 
@@ -708,6 +719,10 @@
 
         async function markAsDenied(filename) {
             await updateJobStatus(filename, 'denied');
+        }
+
+        async function markAsPending(filename) {
+            await updateJobStatus(filename, 'pending');
         }
 
         async function updateJobStatus(filename, newStatus) {
