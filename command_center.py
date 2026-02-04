@@ -216,7 +216,7 @@ def render_career_station():
             placeholder="https://company.com/careers/job-posting",
             help="Paste a job posting URL to analyze"
         )
-        submit_btn = st.form_submit_button("🔍 Analyze Job", use_container_width=True)
+        submit_btn = st.form_submit_button("🔍 Analyze Job", width='stretch')
 
         if submit_btn and job_url:
             with st.spinner("Trinity is analyzing the job posting..."):
@@ -376,7 +376,7 @@ def render_engineering_station():
 
         col1, col2 = st.columns([3, 1])
         with col1:
-            generate_btn = st.form_submit_button("⚙️ Generate Model", use_container_width=True)
+            generate_btn = st.form_submit_button("⚙️ Generate Model", width='stretch')
         with col2:
             vr_optimize = st.checkbox("VR Optimize", value=vr_mode)
 
@@ -650,7 +650,7 @@ def render_trading_station():
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("📈 View Trading Log", use_container_width=True):
+        if st.button("📈 View Trading Log", width='stretch'):
             if PHOENIX_LOG.exists():
                 with open(PHOENIX_LOG) as f:
                     log_content = f.readlines()[-50:]
@@ -659,7 +659,7 @@ def render_trading_station():
                 st.error("Log file not found")
 
     with col2:
-        if st.button("🔄 Refresh Status", use_container_width=True):
+        if st.button("🔄 Refresh Status", width='stretch'):
             st.rerun()
 
     # Link to Bot-Factory
@@ -699,7 +699,7 @@ def render_header():
 def render_sidebar():
     """Render the sidebar with module selection and settings."""
     with st.sidebar:
-        st.image("https://via.placeholder.com/200x80/1E1E1E/00FF00?text=TRINITY", use_container_width=True)
+        st.image("https://via.placeholder.com/200x80/1E1E1E/00FF00?text=TRINITY", width='stretch')
 
         st.header("Control Panel")
 
@@ -749,7 +749,7 @@ def render_sidebar():
         st.caption(f"**Location:** {os.uname().nodename}")
         st.caption(f"**Time:** {datetime.now().strftime('%H:%M:%S')}")
 
-        if st.button("🔄 Refresh", use_container_width=True):
+        if st.button("🔄 Refresh", width='stretch'):
             st.rerun()
 
 def main():
