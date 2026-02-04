@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinity Dashboard - Job Applications</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: var(--bg-card);
+            border-bottom: 2px solid var(--border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--success);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .controls {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 300px;
+            padding: 0.75rem 1rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .drafts-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .draft-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .draft-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+        }
+
+        .draft-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .draft-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .draft-company {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .fit-score {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .fit-high {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .fit-medium {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .draft-preview {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .draft-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .draft-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            z-index: 10;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .cover-letter {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            padding: 1.5rem;
+            font-family: 'Georgia', serif;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            margin: 1rem 0;
+        }
+
+        .copy-success {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--success);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .copy-success.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stats {
+                gap: 1rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🎯 Trinity Dashboard</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalDrafts">0</div>
+                <div class="stat-label">Drafts</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="avgScore">0</div>
+                <div class="stat-label">Avg Score</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="todayCount">0</div>
+                <div class="stat-label">Today</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search by company or position...">
+            <button class="btn btn-primary" onclick="refreshDrafts()">🔄 Refresh</button>
+            <button class="btn btn-icon" onclick="toggleAutoRefresh()" id="autoRefreshBtn" title="Auto-refresh every 30s">⏱️</button>
+        </div>
+
+        <div id="draftsContainer" class="drafts-grid">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading drafts...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="draftModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modalTitle">Loading...</div>
+                    <div class="draft-company" id="modalCompany"></div>
+                </div>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 1rem;">
+                    <strong>Subject:</strong> <span id="modalSubject"></span>
+                </div>
+                <div class="cover-letter" id="modalContent"></div>
+                <div class="draft-actions">
+                    <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+                    <button class="btn btn-primary" onclick="openDraftFile()">📄 Open File</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="copy-success" id="copySuccess">
+        ✅ Copied to clipboard!
+    </div>
+
+    <script>
+        let drafts = [];
+        let currentDraft = null;
+        let autoRefresh = false;
+        let autoRefreshInterval = null;
+
+        // Load drafts on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshDrafts();
+
+            // Search functionality
+            document.getElementById('searchBox').addEventListener('input', (e) => {
+                filterDrafts(e.target.value);
+            });
+        });
+
+        async function refreshDrafts() {
+            try {
+                const response = await fetch('/api/drafts');
+                const data = await response.json();
+                drafts = data.drafts || [];
+
+                updateStats(data.stats || {});
+                renderDrafts(drafts);
+            } catch (error) {
+                console.error('Error loading drafts:', error);
+                showError('Failed to load drafts');
+            }
+        }
+
+        function updateStats(stats) {
+            document.getElementById('totalDrafts').textContent = stats.total || 0;
+            document.getElementById('avgScore').textContent = stats.avg_score || 0;
+            document.getElementById('todayCount').textContent = stats.today || 0;
+        }
+
+        function renderDrafts(draftsToRender) {
+            const container = document.getElementById('draftsContainer');
+
+            if (draftsToRender.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h2>No drafts yet</h2>
+                        <p>Trinity will create drafts here when jobs match your criteria</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = draftsToRender.map(draft => `
+                <div class="draft-card" onclick="openDraft('${draft.filename}')">
+                    <div class="draft-header">
+                        <div>
+                            <div class="draft-title">${draft.position}</div>
+                            <div class="draft-company">${draft.company}</div>
+                        </div>
+                        <div class="fit-score ${draft.fit_score >= 80 ? 'fit-high' : 'fit-medium'}">
+                            ${draft.fit_score}/100
+                        </div>
+                    </div>
+                    <div class="draft-preview">${draft.preview}</div>
+                    <div class="draft-meta">
+                        <span>📅 ${draft.date}</span>
+                        <span>📄 ${draft.filename}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterDrafts(searchTerm) {
+            if (!searchTerm) {
+                renderDrafts(drafts);
+                return;
+            }
+
+            const filtered = drafts.filter(draft =>
+                draft.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                draft.position.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            renderDrafts(filtered);
+        }
+
+        async function openDraft(filename) {
+            try {
+                const response = await fetch(`/api/draft/${filename}`);
+                const data = await response.json();
+
+                currentDraft = data;
+
+                document.getElementById('modalTitle').textContent = data.position;
+                document.getElementById('modalCompany').textContent = data.company;
+                document.getElementById('modalSubject').textContent = `Application for ${data.position}`;
+                document.getElementById('modalContent').textContent = data.cover_letter;
+
+                document.getElementById('draftModal').classList.add('active');
+            } catch (error) {
+                console.error('Error loading draft:', error);
+                alert('Failed to load draft');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('draftModal').classList.remove('active');
+        }
+
+        async function copyToClipboard() {
+            const content = document.getElementById('modalContent').textContent;
+
+            try {
+                await navigator.clipboard.writeText(content);
+                showCopySuccess();
+            } catch (error) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = content;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showCopySuccess();
+            }
+        }
+
+        function showCopySuccess() {
+            const successEl = document.getElementById('copySuccess');
+            successEl.classList.add('show');
+            setTimeout(() => {
+                successEl.classList.remove('show');
+            }, 3000);
+        }
+
+        function openDraftFile() {
+            if (currentDraft && currentDraft.filepath) {
+                window.open(`/draft-file/${currentDraft.filename}`, '_blank');
+            }
+        }
+
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const btn = document.getElementById('autoRefreshBtn');
+
+            if (autoRefresh) {
+                btn.style.background = 'var(--success)';
+                btn.style.color = 'white';
+                autoRefreshInterval = setInterval(refreshDrafts, 30000);
+            } else {
+                btn.style.background = '';
+                btn.style.color = '';
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('draftsContainer');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <h2>Error</h2>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Close modal on backdrop click
+        document.getElementById('draftModal').addEventListener('click', (e) => {
+            if (e.target.id === 'draftModal') {
+                closeModal();
+            }
+        });
+
+        // Resume Modal Functions
+        async function openResumeModal() {
+            try {
+                const response = await fetch('/api/resume/formatted');
+                const data = await response.json();
+                document.getElementById('resumeContent').textContent = data.formatted_resume;
+                document.getElementById('resumeModal').classList.add('active');
+            } catch (error) {
+                alert('Failed to load resume');
+            }
+        }
+
+        function closeResumeModal() {
+            document.getElementById('resumeModal').classList.remove('active');
+        }
+
+        async function copyResume() {
+            const content = document.getElementById('resumeContent').textContent;
+            try {
+                await navigator.clipboard.writeText(content);
+                showCopySuccess();
+            } catch (error) {
+                const textarea = document.createElement('textarea');
+                textarea.value = content;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showCopySuccess();
+            }
+        }
+
+        function downloadResume() {
+            const content = document.getElementById('resumeContent').textContent;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Ty_Brown_Resume.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Add Resume button to header on load
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const header = document.querySelector('.header');
+            const resumeBtn = document.createElement('button');
+            resumeBtn.className = 'btn btn-primary';
+            resumeBtn.textContent = '📄 My Resume';
+            resumeBtn.onclick = openResumeModal;
+            resumeBtn.style.marginLeft = 'auto';
+            header.appendChild(resumeBtn);
+        });
+    </script>
+
+    <!-- Resume Modal -->
+    <div class="modal" id="resumeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📄 Your Resume</div>
+                <button class="close-btn" onclick="closeResumeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="cover-letter" id="resumeContent" style="font-family: monospace; line-height: 1.6;">Loading...</div>
+                <div class="draft-actions">
+                    <button class="btn btn-success" onclick="copyResume()">📋 Copy Resume</button>
+                    <button class="btn btn-primary" onclick="downloadResume()">💾 Download TXT</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

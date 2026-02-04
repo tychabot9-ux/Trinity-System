@@ -1,0 +1,96 @@
+{
+  "personal_info": {
+    "name": "Ty Brown",
+    "location": "Atascadero, CA",
+    "phone": "1(805)888-9148",
+    "email": "tychabot9@gmail.com",
+    "drivers_license": true,
+    "reliable_vehicle": true
+  },
+  "professional_summary": {
+    "hospitality": "Reliable and tech-savvy professional with a strong background in precision work, facility operations, and independent problem-solving. Proven ability to maintain high standards of organization, communicate effectively with diverse teams, and adapt quickly to new software and protocols. Seeking a Front Desk or Guest Services position where accuracy, dependability, and a calm demeanor are valued.",
+    "general": "Dependable and fast-learning worker with hands-on experience in finish carpentry, construction framing, and farm labor. Strong communication skills, a positive attitude, and a proven ability to work safely and effectively in team-based, fast-paced environments."
+  },
+  "skills": [
+    "Finish Carpentry & Cabinet Assembly",
+    "Framing & General Construction",
+    "Forklift Operation & Material Handling",
+    "Shop Maintenance & Tool Organization",
+    "Farm Labor & Animal Care",
+    "Operational Reliability & Facility Management",
+    "Technical Proficiency (macOS, Software Learning)",
+    "Client & Team Relations",
+    "Problem Solving & Communication"
+  ],
+  "work_experience": [
+    {
+      "title": "Finish Carpentry Technician",
+      "company": "Wyatt Wicks Finish Carpentry Inc.",
+      "location": "Paso Robles, CA",
+      "phone": "(805) 434-3755",
+      "dates": "Recent",
+      "responsibilities": [
+        "Assembled custom cabinetry and woodworking components",
+        "Maintained shop organization and supported installations",
+        "Operated forklift and transported materials",
+        "Executed precision work requiring extreme attention to detail",
+        "Managed inventory and organized shop tools, ensuring safe and efficient workflow",
+        "Collaborated with clients and team members to ensure installations met expectations"
+      ]
+    },
+    {
+      "title": "Framing Apprentice",
+      "company": "Corbet Construction",
+      "location": "Cambria, CA",
+      "address": "2526 Pierce Ave, Cambria, CA 93428",
+      "phone": "(805) 927-3818",
+      "dates": "After 1 year community college",
+      "responsibilities": [
+        "Assisted with layout, measuring, cutting, and structural installation",
+        "Supported remodel and new-build projects",
+        "Maintained clean, safe job sites",
+        "Demonstrated reliability in fast-paced environments, consistently meeting project timelines",
+        "Maintained strict safety protocols (transferable to facility upkeep)",
+        "Worked effectively with minimal supervision, solving on-site logistical problems"
+      ]
+    },
+    {
+      "title": "Farm Laborer / Ranch Operations",
+      "company": "Private Ranch",
+      "location": "Templeton, CA",
+      "dates": "3 years (part-time through school)",
+      "responsibilities": [
+        "Cared for horses and poultry; maintained coops and feed systems",
+        "Loaded feed into barn, cleaned chicken pens, waterers, feeders",
+        "Groomed horses",
+        "Split and stacked firewood",
+        "Cut weeds and cared for fruit trees, picked fruit",
+        "Fence repair",
+        "Entrusted with sole responsibility for property oversight, livestock welfare, and facility security",
+        "Managed daily schedules and maintenance routines autonomously",
+        "Recognized for reliability, communication, and initiative"
+      ],
+      "recommendation": {
+        "from": "Susan Lord",
+        "phone": ["805-239-2009", "805-441-7834"],
+        "note": "Deceased employer",
+        "quote": "Ty is very willing to do whatever is needed as long as he is given instruction. He anticipates potential problems and communicates them. Ty is resourceful and very respectful."
+      }
+    }
+  ],
+  "education": {
+    "high_school": "Templeton High School",
+    "status": "Diploma",
+    "additional": "1 year community college"
+  },
+  "key_strengths": [
+    "Reliability & punctuality",
+    "Quick learner",
+    "Good with people",
+    "Works well in teams",
+    "Technical aptitude",
+    "Attention to detail",
+    "Problem-solving",
+    "Professional demeanor"
+  ]
+}

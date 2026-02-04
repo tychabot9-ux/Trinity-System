@@ -305,10 +305,12 @@ ATTACHMENTS: {resume_path if resume_path else 'None'}
 
             # TODO: Add attachment support if resume_path provided
 
-            # Connect and send
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-                server.login(EMAIL_USER, EMAIL_PASSWORD)
-                server.send_message(msg)
+            # Try STARTTLS on port 587 (more compatible)
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
+            server.send_message(msg)
+            server.quit()
 
             return {
                 "status": "sent",
@@ -411,41 +413,117 @@ class JobSniper:
         # Step 8: Check automation level
         print(f"\n  🔧 Automation Level: {AUTOMATION_LEVEL} (checking for FULL-AUTO)")
         if AUTOMATION_LEVEL == "FULL-AUTO":
-            # FULL-AUTO mode: Send immediately
-            print(f"\n  📧 FULL-AUTO: Sending application...")
+            # FULL-AUTO mode: Create draft and send via Pushover
+            print(f"\n  📧 FULL-AUTO: Creating draft and sending to Pushover...")
 
-            # Send email (DRAFT MODE: saves for review until Gmail credentials fixed)
+            # Create local draft
             send_result = send_application_email(
                 company=company,
                 position=position,
                 cover_letter=materials.get("cover_letter", ""),
                 resume_path=materials.get("resume_path"),
-                test_mode=True  # DRAFT MODE: Gmail auth needs fixing
+                test_mode=True  # Always draft mode for Pushover workflow
             )
 
             if send_result["status"] in ["sent", "draft_created"]:
                 # Record application in database
                 self._record_application(
                     company, position, job_url_or_text, fit_score,
-                    "sent", materials
+                    "ready_to_send", materials
                 )
 
-                # Send Pushover notification
+                # Send formatted Pushover notification (within character limits)
                 if PUSHOVER_AVAILABLE:
-                    push_notification(
-                        title=f"✅ Application Sent: {company}",
-                        message=f"{position}\nFit Score: {fit_score}/100\nRecipient: {send_result['recipient']}",
-                        priority=0
+                    # Get cover letter preview (first 200 chars)
+                    cover_letter = materials.get('cover_letter', '')
+                    preview = cover_letter[:200] + "..." if len(cover_letter) > 200 else cover_letter
+
+                    # Get draft file path
+                    draft_path = send_result.get('draft_path', 'N/A')
+                    draft_filename = draft_path.split('/')[-1] if draft_path != 'N/A' else 'N/A'
+
+                    # Compact message within Pushover's 1024 char limit
+                    pushover_message = f"""🎯 JOB MATCH - ACTION REQUIRED
+
+🏢 {company}
+📋 {position}
+📊 Fit: {fit_score}/100
+
+📄 FULL DRAFT LOCATION:
+~/Desktop/Trinity-System/email_drafts/{draft_filename}
+
+COMMANDS TO COPY:
+# View full draft
+cat ~/Desktop/Trinity-System/email_drafts/{draft_filename}
+
+# Or open in editor
+open ~/Desktop/Trinity-System/email_drafts/{draft_filename}
+
+PREVIEW:
+{preview}
+
+✅ Full cover letter saved locally
+📧 Subject: Application for {position}
+🎯 Review draft file and paste into email/application"""
+
+                    # Test message length before sending
+                    if len(pushover_message) > 1024:
+                        # Fallback to even shorter message
+                        pushover_message = f"""🎯 NEW APPLICATION READY
+
+{company} - {position}
+Fit Score: {fit_score}/100
+
+📁 Draft: {draft_filename}
+
+📂 Open:
+~/Desktop/Trinity-System/email_drafts/
+
+✅ Full cover letter saved
+Copy from draft file to send"""
+
+                    # Send to Pushover
+                    result = push_notification(
+                        title=f"🎯 {fit_score}/100 - {company}",
+                        message=pushover_message,
+                        priority=0,
+                        sound="cashregister",
+                        url=f"file://{draft_path}",  # Clickable link to file
+                        url_title="Open Draft"
                     )
 
-                print(f"  ✅ Application sent successfully!")
-                return {
-                    "status": "sent",
-                    "fit_score": fit_score,
-                    "materials": materials,
-                    "email_result": send_result,
-                    "message": f"Application automatically sent to {send_result['recipient']}"
-                }
+                    # Verify Pushover success and validate draft exists
+                    pushover_status = result.get('status', 'unknown')
+                    draft_exists = Path(draft_path).exists() if draft_path != 'N/A' else False
+
+                    print(f"  📱 Pushover notification: {pushover_status}")
+                    print(f"  📄 Draft file exists: {draft_exists}")
+                    print(f"  📏 Message length: {len(pushover_message)} chars (limit: 1024)")
+
+                    # Validate success
+                    if pushover_status == 1 and draft_exists:
+                        print(f"  ✅ Notification sent successfully!")
+                    else:
+                        print(f"  ⚠️  Warning: Pushover status={pushover_status}, draft_exists={draft_exists}")
+
+                    print(f"  ✅ Draft created and sent to Pushover!")
+                    return {
+                        "status": "pushover_sent",
+                        "fit_score": fit_score,
+                        "materials": materials,
+                        "draft_result": send_result,
+                        "message": f"Draft created and sent to Pushover for manual sending"
+                    }
+                else:
+                    # Pushover not available - just save draft
+                    print(f"  ⚠️  Pushover not available - draft saved locally")
+                    return {
+                        "status": "draft_created",
+                        "fit_score": fit_score,
+                        "materials": materials,
+                        "draft_result": send_result,
+                        "message": f"Draft created locally at {send_result.get('draft_path', 'N/A')}"
+                    }
             else:
                 # Email failed, fall back to approval workflow
                 print(f"  ⚠️  Email failed: {send_result['message']}")
