@@ -9,6 +9,7 @@
 Modules:
   🎯 Career Station - Job hunting automation
   🔧 Engineering Station - CAD generation & 3D modeling
+  🤖 AI Assistant - Chat with Trinity AI (files, voice, images)
   📊 Trading Station - Bot monitoring & performance
 
 Access Points:
@@ -77,6 +78,10 @@ def initialize_session_state():
         st.session_state.last_cad_render = None
     if 'ai_memory' not in st.session_state:
         st.session_state.ai_memory = []
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+    if 'uploaded_files_cache' not in st.session_state:
+        st.session_state.uploaded_files_cache = []
 
 # ============================================================================
 # VR MODE UTILITIES
@@ -576,6 +581,181 @@ def get_macro_status_data() -> Dict:
     except Exception as e:
         return {'error': str(e)}
 
+# ============================================================================
+# AI ASSISTANT STATION
+# ============================================================================
+
+def process_ai_message(user_message: str, uploaded_files: list = None) -> str:
+    """Process user message with Trinity AI Assistant."""
+    try:
+        import google.generativeai as genai
+
+        if not GEMINI_API_KEY:
+            return "⚠️ Error: GEMINI_API_KEY not configured. Please set your Google API key."
+
+        genai.configure(api_key=GEMINI_API_KEY)
+
+        # Use gemini-pro-vision for files, gemini-pro for text only
+        if uploaded_files:
+            model = genai.GenerativeModel('gemini-1.5-pro')
+        else:
+            model = genai.GenerativeModel('gemini-1.5-pro')
+
+        # Build conversation context
+        conversation_parts = []
+
+        # Add chat history context (last 10 messages for context)
+        if st.session_state.chat_history:
+            context = "Previous conversation:\n"
+            for msg in st.session_state.chat_history[-10:]:
+                context += f"{msg['role'].title()}: {msg['content'][:200]}\n"
+            conversation_parts.append(context)
+
+        # Add system context
+        system_context = """You are Trinity, an advanced AI assistant integrated into a personal AI operating system.
+You have access to the user's Career Station (job hunting), Engineering Station (CAD/3D modeling),
+and Trading Station (algorithmic trading with Phoenix Mark XII Genesis V2 bot).
+
+Provide helpful, accurate, and contextual responses. When analyzing files, be thorough and insightful.
+For images, describe what you see. For code, analyze and explain. For documents, summarize key points."""
+        conversation_parts.append(system_context)
+
+        # Process uploaded files
+        if uploaded_files:
+            for file in uploaded_files:
+                try:
+                    if file.type.startswith('image/'):
+                        # Handle image files
+                        import PIL.Image
+                        image = PIL.Image.open(file)
+                        conversation_parts.append(image)
+                        conversation_parts.append(f"[Image: {file.name}]")
+                    else:
+                        # Handle text-based files
+                        content = file.read()
+                        try:
+                            text_content = content.decode('utf-8')
+                            conversation_parts.append(f"[File: {file.name}]\n{text_content[:10000]}")
+                        except:
+                            conversation_parts.append(f"[Binary file: {file.name}, {len(content)} bytes]")
+                except Exception as e:
+                    conversation_parts.append(f"[Error reading {file.name}: {str(e)}]")
+
+        # Add current user message
+        conversation_parts.append(f"User: {user_message}")
+
+        # Generate response
+        response = model.generate_content(conversation_parts)
+        return response.text
+
+    except Exception as e:
+        return f"⚠️ Error generating response: {str(e)}"
+
+def render_ai_assistant_station():
+    """Render the AI Assistant chat interface."""
+    st.header("🤖 Trinity AI Assistant")
+
+    st.caption("Chat with Trinity AI • Supports text, images, code, documents, and voice")
+
+    # Chat history display
+    chat_container = st.container()
+
+    with chat_container:
+        if not st.session_state.chat_history:
+            st.info("👋 Hi! I'm Trinity, your AI assistant. Upload files, ask questions, or just chat!")
+        else:
+            for idx, message in enumerate(st.session_state.chat_history):
+                if message['role'] == 'user':
+                    with st.chat_message("user", avatar="👤"):
+                        st.markdown(message['content'])
+                        if 'files' in message and message['files']:
+                            st.caption(f"📎 {len(message['files'])} file(s) attached")
+                else:
+                    with st.chat_message("assistant", avatar="🤖"):
+                        st.markdown(message['content'])
+
+    # File upload section
+    st.divider()
+    uploaded_files = st.file_uploader(
+        "📎 Upload files (images, PDFs, code, documents)",
+        accept_multiple_files=True,
+        type=None,  # Accept all file types
+        key="ai_file_upload"
+    )
+
+    if uploaded_files:
+        cols = st.columns(min(len(uploaded_files), 4))
+        for idx, file in enumerate(uploaded_files):
+            with cols[idx % 4]:
+                st.caption(f"📄 {file.name}")
+                st.caption(f"{file.type}")
+
+    # Input area
+    col1, col2 = st.columns([5, 1])
+
+    with col1:
+        user_input = st.chat_input("Type your message here...", key="ai_chat_input")
+
+    with col2:
+        # Voice input button (placeholder for future implementation)
+        try:
+            audio_input = st.audio_input("🎤", key="ai_voice_input")
+            if audio_input:
+                st.info("🎤 Voice transcription coming soon...")
+        except:
+            # Fallback if audio_input not available in Streamlit version
+            if st.button("🎤 Voice", key="ai_voice_btn", help="Voice input (coming soon)"):
+                st.info("🎤 Voice input will be available in future updates")
+
+    # Process user input
+    if user_input:
+        # Add user message to history
+        user_msg = {
+            'role': 'user',
+            'content': user_input,
+            'files': [f.name for f in uploaded_files] if uploaded_files else [],
+            'timestamp': datetime.now().isoformat()
+        }
+        st.session_state.chat_history.append(user_msg)
+
+        # Generate AI response
+        with st.spinner("Trinity is thinking..."):
+            ai_response = process_ai_message(user_input, uploaded_files)
+
+        # Add AI response to history
+        ai_msg = {
+            'role': 'assistant',
+            'content': ai_response,
+            'timestamp': datetime.now().isoformat()
+        }
+        st.session_state.chat_history.append(ai_msg)
+
+        # Rerun to display new messages
+        st.rerun()
+
+    # Chat controls
+    st.divider()
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🗑️ Clear Chat", width='stretch'):
+            st.session_state.chat_history = []
+            st.rerun()
+
+    with col2:
+        if st.button("💾 Export Chat", width='stretch'):
+            if st.session_state.chat_history:
+                export_data = json.dumps(st.session_state.chat_history, indent=2)
+                st.download_button(
+                    "📥 Download JSON",
+                    export_data,
+                    file_name=f"trinity_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json"
+                )
+
+    with col3:
+        st.caption(f"💬 {len(st.session_state.chat_history)} messages")
+
 def render_trading_station():
     """Render the Trading Bot monitoring module."""
     st.header("📊 Trading Station")
@@ -664,7 +844,13 @@ def render_trading_station():
 
     # Link to Bot-Factory
     st.divider()
-    st.markdown(f"[🤖 Open Bot-Factory Directory](file://{BOT_FACTORY_DIR})")
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.caption("📁 Bot-Factory Directory")
+    with col2:
+        if st.button("🤖 Open", key="open_bot_factory", width='stretch'):
+            subprocess.run(["open", str(BOT_FACTORY_DIR)])
+            st.success("Opening Bot-Factory...")
 
 # ============================================================================
 # MAIN COMMAND CENTER INTERFACE
@@ -679,19 +865,53 @@ def render_header():
         initial_sidebar_state="expanded"
     )
 
-    # Custom CSS for VR mode
-    if is_vr_mode():
-        st.markdown("""
-        <style>
-        .main {
-            font-size: 1.2em;
-        }
-        button {
-            font-size: 1.2em !important;
-            padding: 1em !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    # Custom CSS styling
+    vr_size = "1.3em" if is_vr_mode() else "1em"
+    st.markdown(f"""
+    <style>
+        /* Enhanced UI Styling */
+        .main {{
+            font-size: {vr_size};
+        }}
+        button {{
+            font-size: {vr_size} !important;
+            padding: {'1em' if is_vr_mode() else '0.5em'} !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease !important;
+        }}
+        button:hover {{
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,255,0,0.3) !important;
+        }}
+        .stChatMessage {{
+            border-radius: 10px;
+            padding: 1em;
+            margin: 0.5em 0;
+        }}
+        .stTextInput input {{
+            border-radius: 8px;
+        }}
+        .stSelectbox {{
+            border-radius: 8px;
+        }}
+        /* Success/Error styling */
+        .stSuccess {{
+            border-left: 4px solid #00ff00;
+        }}
+        .stError {{
+            border-left: 4px solid #ff0000;
+        }}
+        .stInfo {{
+            border-left: 4px solid #0088ff;
+        }}
+        /* Metrics enhancement */
+        [data-testid="stMetricValue"] {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff00;
+        }}
+    </style>
+    """, unsafe_allow_html=True)
 
     st.title("🎯 TRINITY COMMAND CENTER")
     st.caption("Unified AI Workstation • Career • Engineering • Trading")
@@ -719,8 +939,8 @@ def render_sidebar():
         st.subheader("Stations")
         module = st.radio(
             "Select Module:",
-            ["Career", "Engineering", "Trading"],
-            index=["Career", "Engineering", "Trading"].index(st.session_state.active_module),
+            ["Career", "Engineering", "AI Assistant", "Trading"],
+            index=["Career", "Engineering", "AI Assistant", "Trading"].index(st.session_state.active_module),
             label_visibility="collapsed"
         )
 
@@ -745,9 +965,30 @@ def render_sidebar():
 
         st.divider()
 
+        # Quick Stats
+        st.subheader("Quick Stats")
+        try:
+            import psutil
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            mem = psutil.virtual_memory()
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("CPU", f"{cpu_percent:.0f}%")
+            with col2:
+                st.metric("RAM", f"{mem.percent:.0f}%")
+        except:
+            st.caption("📊 Stats unavailable")
+
+        st.divider()
+
         # Quick Info
         st.caption(f"**Location:** {os.uname().nodename}")
         st.caption(f"**Time:** {datetime.now().strftime('%H:%M:%S')}")
+
+        # Session info
+        if st.session_state.chat_history:
+            st.caption(f"💬 Chat messages: {len(st.session_state.chat_history)}")
 
         if st.button("🔄 Refresh", width='stretch'):
             st.rerun()
@@ -763,14 +1004,26 @@ def main():
         render_career_station()
     elif st.session_state.active_module == "Engineering":
         render_engineering_station()
+    elif st.session_state.active_module == "AI Assistant":
+        render_ai_assistant_station()
     elif st.session_state.active_module == "Trading":
         render_trading_station()
 
     # Footer
     st.divider()
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.caption("⚡ Trinity v1.0")
     with col2:
-        st.caption("Trinity Command Center v1.0 • Powered by Gemini & Claude")
+        st.caption("🤖 Gemini + Claude")
+    with col3:
+        uptime_start = datetime.now() - timedelta(seconds=time.time() % 86400)
+        st.caption(f"⏱️ Session: {(datetime.now() - uptime_start).seconds // 60}m")
+    with col4:
+        with st.popover("⌨️ Shortcuts"):
+            st.caption("**Ctrl+K**: Jump to module")
+            st.caption("**Ctrl+R**: Refresh")
+            st.caption("**Ctrl+/**: Help")
 
 if __name__ == "__main__":
     main()
