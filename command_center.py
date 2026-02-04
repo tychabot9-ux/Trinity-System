@@ -9,6 +9,7 @@
 Modules:
   🎯 Career Station - Job hunting automation
   🔧 Engineering Station - CAD generation & 3D modeling
+  🧠 Memory Dashboard - View profile, preferences & insights
   🤖 AI Assistant - Chat with Trinity AI (files, voice, images)
   📊 Trading Station - Bot monitoring & performance
 
@@ -82,6 +83,51 @@ def initialize_session_state():
         st.session_state.chat_history = []
     if 'uploaded_files_cache' not in st.session_state:
         st.session_state.uploaded_files_cache = []
+    if 'memory_initialized' not in st.session_state:
+        st.session_state.memory_initialized = False
+        _initialize_trinity_memory()
+
+def _initialize_trinity_memory():
+    """Initialize Trinity Memory with user profile."""
+    try:
+        from trinity_memory import get_memory
+        memory = get_memory()
+
+        # Check if profile exists
+        existing_profile = memory.get_profile('name')
+        if not existing_profile:
+            # Initialize user profile
+            memory.set_profile('name', 'Ty Brown', 'personal')
+            memory.set_profile('email', 'tychabot9@gmail.com', 'personal')
+            memory.set_profile('role', 'Developer & Trader', 'professional')
+            memory.set_profile('github', 'tychabot9-ux', 'professional')
+            memory.set_profile('system_initialized', datetime.now().isoformat(), 'system')
+            memory.set_profile('location', os.uname().nodename, 'system')
+
+            # Set initial preferences
+            memory.learn_preference('Trading', 'bot', 'active_system', 'Phoenix Mark XII Genesis V2')
+            memory.learn_preference('Trading', 'strategy', 'champion_fitness', 121.08)
+            memory.learn_preference('Trading', 'risk', 'paper_trading', True)
+            memory.learn_preference('Engineering', 'CAD', 'tool', 'OpenSCAD')
+            memory.learn_preference('Career', 'job_search', 'active', True)
+
+            # Add initial knowledge
+            memory.add_knowledge(
+                'Phoenix Bot',
+                'Phoenix Mark XII Genesis V2 - Validated champion trading bot. Fitness: 121.08, Sharpe: 2.14, Sortino: 15.46, Profit probability: 99.05%. Completed 320 trades.',
+                source='Validation Feb 3, 2026'
+            )
+
+            memory.add_knowledge(
+                'Trinity System',
+                'Personal AI Operating System with Command Center, Career Station, Engineering Station, AI Assistant, and Trading Station. Military-grade personalized intelligence.',
+                source='System initialization'
+            )
+
+        st.session_state.memory_initialized = True
+
+    except Exception as e:
+        print(f"Warning: Trinity Memory initialization failed: {e}")
 
 # ============================================================================
 # VR MODE UTILITIES
@@ -589,6 +635,7 @@ def process_ai_message(user_message: str, uploaded_files: list = None) -> str:
     """Process user message with Trinity AI Assistant."""
     try:
         import google.generativeai as genai
+        from trinity_memory import get_memory
 
         if not GEMINI_API_KEY:
             return "⚠️ Error: GEMINI_API_KEY not configured. Please set your Google API key."
@@ -601,6 +648,15 @@ def process_ai_message(user_message: str, uploaded_files: list = None) -> str:
         else:
             model = genai.GenerativeModel('gemini-1.5-pro')
 
+        # Get Trinity Memory for enhanced context
+        memory = get_memory()
+
+        # Log interaction
+        memory.log_interaction('AI Assistant', 'chat_message', {
+            'message_length': len(user_message),
+            'has_files': bool(uploaded_files)
+        })
+
         # Build conversation context
         conversation_parts = []
 
@@ -611,13 +667,35 @@ def process_ai_message(user_message: str, uploaded_files: list = None) -> str:
                 context += f"{msg['role'].title()}: {msg['content'][:200]}\n"
             conversation_parts.append(context)
 
-        # Add system context
-        system_context = """You are Trinity, an advanced AI assistant integrated into a personal AI operating system.
-You have access to the user's Career Station (job hunting), Engineering Station (CAD/3D modeling),
-and Trading Station (algorithmic trading with Phoenix Mark XII Genesis V2 bot).
+        # Get user profile from memory
+        user_profile = memory.get_full_profile()
+        preferences = memory.get_all_preferences()
+        recent_decisions = memory.get_decisions(limit=5)
 
-Provide helpful, accurate, and contextual responses. When analyzing files, be thorough and insightful.
-For images, describe what you see. For code, analyze and explain. For documents, summarize key points."""
+        # Build enhanced system context with memory
+        system_context = f"""You are Trinity, an advanced AI assistant with military-grade personalized intelligence.
+
+USER PROFILE:
+{json.dumps(user_profile, indent=2) if user_profile else 'No profile data yet'}
+
+LEARNED PREFERENCES:
+{json.dumps(preferences, indent=2) if preferences else 'Learning user preferences...'}
+
+RECENT DECISIONS:
+{json.dumps([{'station': d['station'], 'type': d['decision_type'], 'decision': d['decision']} for d in recent_decisions], indent=2) if recent_decisions else 'No recent decisions'}
+
+CAPABILITIES:
+- Career Station: Job hunting automation and tracking
+- Engineering Station: CAD/3D modeling with OpenSCAD
+- Trading Station: Algorithmic trading with Phoenix Mark XII Genesis V2 (validated champion)
+- Memory System: Long-term memory, preference learning, decision tracking
+
+INSTRUCTIONS:
+- Use the user profile and preferences to provide highly personalized responses
+- Reference past decisions and patterns when relevant
+- Provide context-aware suggestions based on learned behavior
+- Be thorough and insightful when analyzing files
+- Always maintain privacy and security of personal data"""
         conversation_parts.append(system_context)
 
         # Process uploaded files
@@ -650,6 +728,198 @@ For images, describe what you see. For code, analyze and explain. For documents,
 
     except Exception as e:
         return f"⚠️ Error generating response: {str(e)}"
+
+# ============================================================================
+# MEMORY DASHBOARD
+# ============================================================================
+
+def render_memory_dashboard():
+    """Render Trinity Memory Dashboard - view profile, preferences, and insights."""
+    st.header("🧠 Trinity Memory Dashboard")
+
+    st.caption("Military-Grade Personalized Intelligence System")
+
+    try:
+        from trinity_memory import get_memory
+        memory = get_memory()
+
+        # Memory stats overview
+        stats = memory.get_memory_stats()
+
+        st.subheader("📊 Memory Statistics")
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Profile Entries", stats['profile_entries'])
+            st.metric("Preferences", stats['preferences']['count'])
+
+        with col2:
+            st.metric("Decisions Tracked", stats['decisions_tracked'])
+            st.metric("Total Interactions", stats['total_interactions'])
+
+        with col3:
+            st.metric("24h Interactions", stats['interactions_24h'])
+            st.metric("Insights", stats['validated_insights'])
+
+        with col4:
+            st.metric("Knowledge Base", stats['knowledge_entries'])
+            if 'most_used_station' in stats:
+                st.metric("Top Station", stats['most_used_station']['name'])
+
+        st.divider()
+
+        # Tabs for different views
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "👤 Profile",
+            "⚙️ Preferences",
+            "🎯 Decisions",
+            "💡 Insights",
+            "📚 Knowledge"
+        ])
+
+        with tab1:
+            st.subheader("User Profile")
+            profile = memory.get_full_profile()
+
+            if profile:
+                for category, items in profile.items():
+                    with st.expander(f"📁 {category.title()}", expanded=(category == 'personal')):
+                        for key, data in items.items():
+                            col1, col2 = st.columns([2, 1])
+                            with col1:
+                                st.write(f"**{key}:** {data['value']}")
+                            with col2:
+                                st.caption(f"Updated: {data['updated_at'][:10]}")
+            else:
+                st.info("No profile data yet. Interact with Trinity to build your profile.")
+
+            # Edit profile
+            st.divider()
+            with st.form("edit_profile"):
+                st.caption("Add/Update Profile Entry")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    new_key = st.text_input("Key")
+                with col2:
+                    new_value = st.text_input("Value")
+                with col3:
+                    new_category = st.selectbox("Category", ["personal", "professional", "system", "preferences"])
+
+                if st.form_submit_button("💾 Save"):
+                    if new_key and new_value:
+                        memory.set_profile(new_key, new_value, new_category)
+                        st.success(f"Saved {new_key} = {new_value}")
+                        st.rerun()
+
+        with tab2:
+            st.subheader("Learned Preferences")
+            all_prefs = memory.get_all_preferences()
+
+            if all_prefs:
+                for station, categories in all_prefs.items():
+                    with st.expander(f"🎯 {station}", expanded=True):
+                        for category, prefs in categories.items():
+                            st.caption(f"**{category.upper()}**")
+                            for key, data in prefs.items():
+                                confidence_pct = int(data['confidence'] * 100)
+                                st.write(f"- **{key}:** {data['value']} ")
+                                st.progress(data['confidence'], text=f"Confidence: {confidence_pct}% | Reinforced: {data['reinforcement_count']}x")
+            else:
+                st.info("No preferences learned yet. Trinity will learn from your interactions.")
+
+        with tab3:
+            st.subheader("Decision History")
+            decisions = memory.get_decisions(limit=50)
+
+            if decisions:
+                for decision in decisions:
+                    with st.expander(
+                        f"[{decision['station']}] {decision['decision_type']} - {decision['timestamp'][:16]}",
+                        expanded=False
+                    ):
+                        st.write(f"**Decision:** {decision['decision']}")
+                        if decision['context']:
+                            st.caption(f"**Context:** {decision['context']}")
+                        if decision['rationale']:
+                            st.info(f"**Rationale:** {decision['rationale']}")
+                        if decision['outcome']:
+                            st.success(f"**Outcome:** {decision['outcome']}")
+            else:
+                st.info("No decisions tracked yet.")
+
+        with tab4:
+            st.subheader("Discovered Insights")
+            insights = memory.get_insights(limit=100)
+
+            if insights:
+                validated = [i for i in insights if i['validated']]
+                unvalidated = [i for i in insights if not i['validated']]
+
+                if validated:
+                    st.caption("**✅ Validated Insights**")
+                    for insight in validated:
+                        with st.expander(f"💡 {insight['title']}", expanded=False):
+                            st.write(insight['description'] or "No description")
+                            st.progress(insight['confidence'], text=f"Confidence: {int(insight['confidence']*100)}%")
+                            st.caption(f"Discovered: {insight['discovered_at'][:10]}")
+
+                if unvalidated:
+                    st.caption("**🔍 Pending Validation**")
+                    for insight in unvalidated:
+                        with st.expander(f"💭 {insight['title']}", expanded=False):
+                            st.write(insight['description'] or "No description")
+                            st.progress(insight['confidence'], text=f"Confidence: {int(insight['confidence']*100)}%")
+            else:
+                st.info("No insights discovered yet. Trinity will identify patterns over time.")
+
+        with tab5:
+            st.subheader("Knowledge Base")
+
+            # Search knowledge
+            search_query = st.text_input("🔍 Search knowledge", placeholder="Search topics...")
+
+            if search_query:
+                knowledge = memory.get_knowledge(topic=search_query, limit=50)
+            else:
+                knowledge = memory.get_knowledge(limit=50)
+
+            if knowledge:
+                for entry in knowledge:
+                    with st.expander(
+                        f"📖 {entry['topic']} (relevance: {int(entry['relevance_score']*100)}%)",
+                        expanded=False
+                    ):
+                        st.write(entry['content'])
+                        if entry['source']:
+                            st.caption(f"**Source:** {entry['source']}")
+                        st.caption(f"**Accessed:** {entry['accessed_count']}x | Created: {entry['created_at'][:10]}")
+            else:
+                st.info("Knowledge base is empty. Trinity will build it as you interact.")
+
+        # Export functionality
+        st.divider()
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if st.button("📥 Export Full Profile", width='stretch'):
+                export_data = memory.get_user_summary()
+                st.download_button(
+                    "💾 Download JSON",
+                    json.dumps(export_data, indent=2),
+                    file_name=f"trinity_memory_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json"
+                )
+
+        with col2:
+            if st.button("🔄 Refresh Data", width='stretch'):
+                st.rerun()
+
+        with col3:
+            st.caption(f"Database: {MEMORY_DB.name}")
+
+    except Exception as e:
+        st.error(f"⚠️ Memory system error: {str(e)}")
+        st.info("Trinity Memory may not be initialized yet.")
 
 def render_ai_assistant_station():
     """Render the AI Assistant chat interface."""
@@ -939,8 +1209,8 @@ def render_sidebar():
         st.subheader("Stations")
         module = st.radio(
             "Select Module:",
-            ["Career", "Engineering", "AI Assistant", "Trading"],
-            index=["Career", "Engineering", "AI Assistant", "Trading"].index(st.session_state.active_module),
+            ["Career", "Engineering", "Memory", "AI Assistant", "Trading"],
+            index=["Career", "Engineering", "Memory", "AI Assistant", "Trading"].index(st.session_state.active_module),
             label_visibility="collapsed"
         )
 
@@ -1004,6 +1274,8 @@ def main():
         render_career_station()
     elif st.session_state.active_module == "Engineering":
         render_engineering_station()
+    elif st.session_state.active_module == "Memory":
+        render_memory_dashboard()
     elif st.session_state.active_module == "AI Assistant":
         render_ai_assistant_station()
     elif st.session_state.active_module == "Trading":
