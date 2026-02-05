@@ -856,188 +856,179 @@ INSTRUCTIONS:
 # ============================================================================
 
 def render_memory_dashboard():
-    """Render Trinity Memory Dashboard - view profile, preferences, and insights."""
-    st.header("🧠 Trinity Memory Dashboard")
+    """Render Trinity Memory Dashboard - AI-powered memory search."""
+    st.header("🧠 Trinity Memory Search")
 
-    st.caption("Military-Grade Personalized Intelligence System")
+    st.caption("Ask Trinity about your profile, preferences, decisions, or past interactions")
 
     try:
         from trinity_memory import get_memory
+        import google.generativeai as genai
+
         memory = get_memory()
 
-        # Memory stats overview
+        # Quick stats bar
         stats = memory.get_memory_stats()
-
-        st.subheader("📊 Memory Statistics")
-        col1, col2, col3, col4 = st.columns(4)
-
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric("Profile Entries", stats['profile_entries'])
-            st.metric("Preferences", stats['preferences']['count'])
-
+            st.metric("Profile", stats['profile_entries'])
         with col2:
-            st.metric("Decisions Tracked", stats['decisions_tracked'])
-            st.metric("Total Interactions", stats['total_interactions'])
-
+            st.metric("Preferences", stats['preferences']['count'])
         with col3:
-            st.metric("24h Interactions", stats['interactions_24h'])
-            st.metric("Insights", stats['validated_insights'])
-
+            st.metric("Decisions", stats['decisions_tracked'])
         with col4:
-            st.metric("Knowledge Base", stats['knowledge_entries'])
-            if 'most_used_station' in stats:
-                st.metric("Top Station", stats['most_used_station']['name'])
+            st.metric("Interactions", stats['total_interactions'])
+        with col5:
+            st.metric("Knowledge", stats['knowledge_entries'])
 
         st.divider()
 
-        # Tabs for different views
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "👤 Profile",
-            "⚙️ Preferences",
-            "🎯 Decisions",
-            "💡 Insights",
-            "📚 Knowledge"
-        ])
+        # AI-Powered Memory Search
+        st.subheader("🔍 Search Your Memory")
 
-        with tab1:
-            st.subheader("User Profile")
-            profile = memory.get_full_profile()
+        # Initialize session state for memory search history
+        if 'memory_search_history' not in st.session_state:
+            st.session_state.memory_search_history = []
 
-            if profile:
-                for category, items in profile.items():
-                    with st.expander(f"📁 {category.title()}", expanded=(category == 'personal')):
-                        for key, data in items.items():
-                            col1, col2 = st.columns([2, 1])
-                            with col1:
-                                st.write(f"**{key}:** {data['value']}")
-                            with col2:
-                                st.caption(f"Updated: {data['updated_at'][:10]}")
-            else:
-                st.info("No profile data yet. Interact with Trinity to build your profile.")
+        # Example queries
+        st.caption("**Try asking:**")
+        example_col1, example_col2, example_col3 = st.columns(3)
+        with example_col1:
+            if st.button("💼 My job preferences", width='stretch'):
+                search_query = "What are my career and job search preferences?"
+                st.session_state.temp_search = search_query
+        with example_col2:
+            if st.button("📊 Recent decisions", width='stretch'):
+                search_query = "Show me my recent decisions from the last week"
+                st.session_state.temp_search = search_query
+        with example_col3:
+            if st.button("🎯 What did I do today?", width='stretch'):
+                search_query = "What did I do today?"
+                st.session_state.temp_search = search_query
 
-            # Edit profile
+        # Search input
+        search_input = st.text_input(
+            "Ask about your memory, preferences, decisions, or activities...",
+            value=st.session_state.get('temp_search', ''),
+            placeholder="e.g., 'What are my CAD preferences?', 'Show decisions from last Tuesday', 'What's my profile?'",
+            key="memory_search_input"
+        )
+
+        if 'temp_search' in st.session_state:
+            del st.session_state.temp_search
+
+        if st.button("🔍 Search Memory", type="primary", width='stretch') and search_input:
+            with st.spinner("🧠 Searching Trinity Memory..."):
+                # Get comprehensive memory data
+                full_profile = memory.get_full_profile()
+                all_preferences = memory.get_all_preferences()
+                recent_decisions = memory.get_decisions(limit=50)
+                interactions = memory.get_interactions(hours=168, limit=500)  # Last week
+                insights = memory.get_insights(limit=50)
+                knowledge = memory.get_knowledge(limit=100)
+
+                # Build context for AI
+                memory_context = f"""
+TRINITY MEMORY DATABASE - Query: "{search_input}"
+
+USER PROFILE:
+{json.dumps(full_profile, indent=2)}
+
+LEARNED PREFERENCES:
+{json.dumps(all_preferences, indent=2)}
+
+RECENT DECISIONS (Last 50):
+{json.dumps([{
+    'station': d['station'],
+    'type': d['decision_type'],
+    'decision': d['decision'],
+    'context': d.get('context'),
+    'timestamp': d['timestamp']
+} for d in recent_decisions], indent=2)}
+
+RECENT INTERACTIONS (Last Week):
+{json.dumps([{
+    'station': i['station'],
+    'action': i['action_type'],
+    'timestamp': i['timestamp']
+} for i in interactions[-100:]], indent=2)}
+
+INSIGHTS:
+{json.dumps([{
+    'type': i['insight_type'],
+    'title': i['title'],
+    'confidence': i['confidence']
+} for i in insights], indent=2)}
+
+KNOWLEDGE BASE ENTRIES:
+{json.dumps([{
+    'topic': k['topic'],
+    'content': k['content'][:200]
+} for k in knowledge[:20]], indent=2)}
+
+MEMORY STATISTICS:
+{json.dumps(stats, indent=2)}
+
+TASK:
+Answer the user's query based on the Trinity Memory database above. Be specific, cite dates/timestamps when relevant, and provide actionable information. If searching by date, parse the query intelligently (e.g., "last Tuesday", "yesterday", "this week").
+"""
+
+                # Generate AI response
+                if not GEMINI_API_KEY:
+                    st.error("⚠️ GEMINI_API_KEY not configured")
+                else:
+                    genai.configure(api_key=GEMINI_API_KEY)
+                    model = genai.GenerativeModel('gemini-1.5-pro')
+                    response = model.generate_content(memory_context)
+
+                    # Display results
+                    st.success("✅ Search Complete")
+                    st.markdown("### 🎯 Results")
+                    st.markdown(response.text)
+
+                    # Log the search
+                    memory.log_interaction('Memory', 'search', {
+                        'query': search_input,
+                        'results_length': len(response.text)
+                    })
+
+                    # Add to search history
+                    st.session_state.memory_search_history.append({
+                        'query': search_input,
+                        'response': response.text,
+                        'timestamp': datetime.now().isoformat()
+                    })
+
+        # Recent searches
+        if st.session_state.memory_search_history:
             st.divider()
-            with st.form("edit_profile"):
-                st.caption("Add/Update Profile Entry")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    new_key = st.text_input("Key")
-                with col2:
-                    new_value = st.text_input("Value")
-                with col3:
-                    new_category = st.selectbox("Category", ["personal", "professional", "system", "preferences"])
+            with st.expander("📜 Recent Searches", expanded=False):
+                for search in reversed(st.session_state.memory_search_history[-5:]):
+                    st.caption(f"**Q:** {search['query']}")
+                    st.caption(f"🕐 {search['timestamp'][:16]}")
+                    with st.expander("View Response"):
+                        st.markdown(search['response'])
+                    st.divider()
 
-                if st.form_submit_button("💾 Save"):
-                    if new_key and new_value:
-                        memory.set_profile(new_key, new_value, new_category)
-                        st.success(f"Saved {new_key} = {new_value}")
-                        st.rerun()
-
-        with tab2:
-            st.subheader("Learned Preferences")
-            all_prefs = memory.get_all_preferences()
-
-            if all_prefs:
-                for station, categories in all_prefs.items():
-                    with st.expander(f"🎯 {station}", expanded=True):
-                        for category, prefs in categories.items():
-                            st.caption(f"**{category.upper()}**")
-                            for key, data in prefs.items():
-                                confidence_pct = int(data['confidence'] * 100)
-                                st.write(f"- **{key}:** {data['value']} ")
-                                st.progress(data['confidence'], text=f"Confidence: {confidence_pct}% | Reinforced: {data['reinforcement_count']}x")
-            else:
-                st.info("No preferences learned yet. Trinity will learn from your interactions.")
-
-        with tab3:
-            st.subheader("Decision History")
-            decisions = memory.get_decisions(limit=50)
-
-            if decisions:
-                for decision in decisions:
-                    with st.expander(
-                        f"[{decision['station']}] {decision['decision_type']} - {decision['timestamp'][:16]}",
-                        expanded=False
-                    ):
-                        st.write(f"**Decision:** {decision['decision']}")
-                        if decision['context']:
-                            st.caption(f"**Context:** {decision['context']}")
-                        if decision['rationale']:
-                            st.info(f"**Rationale:** {decision['rationale']}")
-                        if decision['outcome']:
-                            st.success(f"**Outcome:** {decision['outcome']}")
-            else:
-                st.info("No decisions tracked yet.")
-
-        with tab4:
-            st.subheader("Discovered Insights")
-            insights = memory.get_insights(limit=100)
-
-            if insights:
-                validated = [i for i in insights if i['validated']]
-                unvalidated = [i for i in insights if not i['validated']]
-
-                if validated:
-                    st.caption("**✅ Validated Insights**")
-                    for insight in validated:
-                        with st.expander(f"💡 {insight['title']}", expanded=False):
-                            st.write(insight['description'] or "No description")
-                            st.progress(insight['confidence'], text=f"Confidence: {int(insight['confidence']*100)}%")
-                            st.caption(f"Discovered: {insight['discovered_at'][:10]}")
-
-                if unvalidated:
-                    st.caption("**🔍 Pending Validation**")
-                    for insight in unvalidated:
-                        with st.expander(f"💭 {insight['title']}", expanded=False):
-                            st.write(insight['description'] or "No description")
-                            st.progress(insight['confidence'], text=f"Confidence: {int(insight['confidence']*100)}%")
-            else:
-                st.info("No insights discovered yet. Trinity will identify patterns over time.")
-
-        with tab5:
-            st.subheader("Knowledge Base")
-
-            # Search knowledge
-            search_query = st.text_input("🔍 Search knowledge", placeholder="Search topics...")
-
-            if search_query:
-                knowledge = memory.get_knowledge(topic=search_query, limit=50)
-            else:
-                knowledge = memory.get_knowledge(limit=50)
-
-            if knowledge:
-                for entry in knowledge:
-                    with st.expander(
-                        f"📖 {entry['topic']} (relevance: {int(entry['relevance_score']*100)}%)",
-                        expanded=False
-                    ):
-                        st.write(entry['content'])
-                        if entry['source']:
-                            st.caption(f"**Source:** {entry['source']}")
-                        st.caption(f"**Accessed:** {entry['accessed_count']}x | Created: {entry['created_at'][:10]}")
-            else:
-                st.info("Knowledge base is empty. Trinity will build it as you interact.")
-
-        # Export functionality
+        # Quick actions
         st.divider()
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
 
         with col1:
-            if st.button("📥 Export Full Profile", width='stretch'):
+            if st.button("📥 Export Memory", width='stretch'):
                 export_data = memory.get_user_summary()
                 st.download_button(
                     "💾 Download JSON",
                     json.dumps(export_data, indent=2),
-                    file_name=f"trinity_memory_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json"
+                    file_name=f"trinity_memory_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    width='stretch'
                 )
 
         with col2:
-            if st.button("🔄 Refresh Data", width='stretch'):
+            if st.button("🗑️ Clear Search History", width='stretch'):
+                st.session_state.memory_search_history = []
                 st.rerun()
-
-        with col3:
-            st.caption(f"Database: {MEMORY_DB.name}")
 
     except Exception as e:
         st.error(f"⚠️ Memory system error: {str(e)}")
