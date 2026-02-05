@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinity VR Engineering Workspace</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 255, 0, 0.9);
+            color: #000;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        #info h1 {
+            margin: 0 0 10px 0;
+            color: #000;
+            font-size: 24px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: #0f0;
+            z-index: 1000;
+        }
+        button {
+            background: #0f0;
+            border: 2px solid #000;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        button:hover {
+            background: #0c0;
+        }
+        #modelList {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .model-item {
+            background: rgba(0, 255, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .model-item:hover {
+            background: rgba(0, 255, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🎯 TRINITY VR WORKSPACE</h1>
+        <p><strong>Oculus Quest 1 Connected</strong></p>
+        <p>📡 Status: <span id="status">Initializing...</span></p>
+        <p>🎮 Controllers: <span id="controllers">Detecting...</span></p>
+        <p>📦 Model: <span id="modelName">None loaded</span></p>
+        <hr>
+        <p><strong>Controls:</strong></p>
+        <ul>
+            <li>🅰️ Button: Rotate model</li>
+            <li>🅱️ Button: Reset view</li>
+            <li>Grip: Grab & move</li>
+            <li>Trigger: Select/Edit</li>
+            <li>Thumbstick: Navigate</li>
+        </ul>
+        <button onclick="startVR()">🥽 ENTER VR</button>
+        <button onclick="loadTestModel()">📦 Load Test Model</button>
+    </div>
+
+    <div id="controls">
+        <h3>🔧 Trinity CAD Models</h3>
+        <div id="modelList">
+            <div class="model-item" onclick="loadModel('test_bolt.stl')">
+                🔩 Test Bolt
+            </div>
+            <div class="model-item" onclick="generateModel()">
+                ➕ Generate New
+            </div>
+        </div>
+    </div>
+
+    <!-- A-Frame VR Scene -->
+    <a-scene
+        background="color: #000"
+        renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true"
+        vr-mode-ui="enabled: true">
+
+        <!-- Assets -->
+        <a-assets>
+            <a-asset-item id="testModel" src=""></a-asset-item>
+        </a-assets>
+
+        <!-- Environment -->
+        <a-sky color="#001122"></a-sky>
+
+        <!-- Grid floor -->
+        <a-plane
+            position="0 0 0"
+            rotation="-90 0 0"
+            width="20"
+            height="20"
+            color="#001100"
+            material="wireframe: true; opacity: 0.5">
+        </a-plane>
+
+        <!-- Lighting -->
+        <a-light type="ambient" intensity="0.5"></a-light>
+        <a-light type="directional" position="2 4 3" intensity="0.8"></a-light>
+        <a-light type="directional" position="-2 4 -3" intensity="0.5"></a-light>
+
+        <!-- Work area boundary -->
+        <a-ring
+            position="0 0.01 0"
+            rotation="-90 0 0"
+            radius-inner="2"
+            radius-outer="2.1"
+            color="#00ff00"
+            material="opacity: 0.6">
+        </a-ring>
+
+        <!-- Model display pedestal -->
+        <a-cylinder
+            id="pedestal"
+            position="0 0.5 -3"
+            radius="0.5"
+            height="1"
+            color="#111"
+            material="metalness: 0.8; roughness: 0.2">
+        </a-cylinder>
+
+        <!-- 3D Model Container -->
+        <a-entity
+            id="modelContainer"
+            position="0 1.5 -3"
+            scale="0.1 0.1 0.1">
+            <!-- Model will be loaded here -->
+        </a-entity>
+
+        <!-- Info Panel -->
+        <a-entity id="infoPanel" position="0 2 -2.5">
+            <a-plane
+                width="2"
+                height="0.8"
+                color="#000"
+                material="opacity: 0.8">
+            </a-plane>
+            <a-text
+                id="infoText"
+                value="TRINITY ENGINEERING WORKSPACE\nOculus Quest 1\nReady for VR"
+                align="center"
+                width="1.8"
+                color="#00ff00"
+                position="0 0 0.01">
+            </a-text>
+        </a-entity>
+
+        <!-- Tool Menu (Left) -->
+        <a-entity id="toolMenu" position="-2 1.5 -2" rotation="0 30 0">
+            <a-plane width="1" height="1.5" color="#001100" material="opacity: 0.9"></a-plane>
+            <a-text value="TOOLS" align="center" color="#0f0" position="0 0.6 0.01" width="0.9"></a-text>
+
+            <!-- Tool buttons -->
+            <a-box class="tool-btn" data-tool="rotate" position="0 0.3 0.1" width="0.8" height="0.2" depth="0.1" color="#003300">
+                <a-text value="↻ ROTATE" align="center" color="#0f0" position="0 0 0.06" width="0.7"></a-text>
+            </a-box>
+
+            <a-box class="tool-btn" data-tool="scale" position="0 0 0.1" width="0.8" height="0.2" depth="0.1" color="#003300">
+                <a-text value="⊕ SCALE" align="center" color="#0f0" position="0 0 0.06" width="0.7"></a-text>
+            </a-box>
+
+            <a-box class="tool-btn" data-tool="move" position="0 -0.3 0.1" width="0.8" height="0.2" depth="0.1" color="#003300">
+                <a-text value="⇄ MOVE" align="center" color="#0f0" position="0 0 0.06" width="0.7"></a-text>
+            </a-box>
+        </a-entity>
+
+        <!-- Model Library (Right) -->
+        <a-entity id="modelLibrary" position="2 1.5 -2" rotation="0 -30 0">
+            <a-plane width="1" height="1.5" color="#001100" material="opacity: 0.9"></a-plane>
+            <a-text value="MODELS" align="center" color="#0f0" position="0 0.6 0.01" width="0.9"></a-text>
+
+            <a-box class="model-btn" data-model="bolt" position="0 0.3 0.1" width="0.8" height="0.2" depth="0.1" color="#003300">
+                <a-text value="🔩 BOLT" align="center" color="#0f0" position="0 0 0.06" width="0.7"></a-text>
+            </a-box>
+
+            <a-box class="model-btn" data-model="generate" position="0 0 0.1" width="0.8" height="0.2" depth="0.1" color="#003300">
+                <a-text value="➕ NEW" align="center" color="#0f0" position="0 0 0.06" width="0.7"></a-text>
+            </a-box>
+        </a-entity>
+
+        <!-- Camera Rig with Controllers -->
+        <a-entity id="rig" position="0 1.6 0">
+            <a-camera look-controls wasd-controls="acceleration: 20">
+                <!-- HUD -->
+                <a-entity id="hud" position="0 0 -0.5">
+                    <a-text
+                        id="hudText"
+                        value="TRINITY VR"
+                        align="center"
+                        position="0 0.2 0"
+                        width="0.3"
+                        color="#00ff00">
+                    </a-text>
+                </a-entity>
+            </a-camera>
+
+            <!-- Left Controller -->
+            <a-entity
+                id="leftController"
+                oculus-touch-controls="hand: left"
+                laser-controls
+                raycaster="objects: .tool-btn, .model-btn, #modelContainer; far: 10"
+                line="color: #00ff00; opacity: 0.75">
+            </a-entity>
+
+            <!-- Right Controller -->
+            <a-entity
+                id="rightController"
+                oculus-touch-controls="hand: right"
+                laser-controls
+                raycaster="objects: .tool-btn, .model-btn, #modelContainer; far: 10"
+                line="color: #00ff00; opacity: 0.75">
+            </a-entity>
+        </a-entity>
+
+    </a-scene>
+
+    <script>
+        // Trinity VR Workspace Controller
+        let currentModel = null;
+        let currentTool = 'rotate';
+        let modelRotation = {x: 0, y: 0, z: 0};
+
+        // Update status
+        document.getElementById('status').textContent = 'Ready';
+        document.getElementById('controllers').textContent = 'Oculus Touch';
+
+        // VR Session Management
+        function startVR() {
+            const scene = document.querySelector('a-scene');
+            if (scene) {
+                scene.enterVR();
+                document.getElementById('info').style.display = 'none';
+                document.getElementById('controls').style.display = 'none';
+                updateHUD('VR MODE ACTIVE');
+            }
+        }
+
+        // Load 3D Model
+        function loadModel(filename) {
+            updateHUD(`Loading ${filename}...`);
+            document.getElementById('modelName').textContent = filename;
+
+            // Clear existing model
+            const container = document.querySelector('#modelContainer');
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+
+            // Load STL model
+            const model = document.createElement('a-entity');
+            model.setAttribute('gltf-model', `/cad_output/${filename}`);
+            model.setAttribute('scale', '1 1 1');
+            model.setAttribute('rotation', '0 0 0');
+            model.setAttribute('animation__rotate', {
+                property: 'rotation',
+                to: '0 360 0',
+                loop: true,
+                dur: 10000,
+                easing: 'linear'
+            });
+
+            container.appendChild(model);
+            currentModel = model;
+
+            updateHUD(`Model loaded: ${filename}`);
+            updateInfoPanel(`TRINITY VR\\n${filename}\\nControls Active`);
+        }
+
+        // Generate new model via Trinity AI
+        async function generateModel() {
+            const prompt = prompt("What CAD model do you want to generate?", "hex bolt M8x20mm");
+            if (!prompt) return;
+
+            updateHUD('Generating with Trinity AI...');
+
+            try {
+                const response = await fetch('http://localhost:8502/generate_cad', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt: prompt})
+                });
+
+                const data = await response.json();
+                if (data.filename) {
+                    loadModel(data.filename);
+                } else {
+                    updateHUD('Generation failed');
+                }
+            } catch (e) {
+                updateHUD('Error: ' + e.message);
+            }
+        }
+
+        // Load test model
+        function loadTestModel() {
+            loadModel('test_bolt.stl');
+        }
+
+        // Update HUD text
+        function updateHUD(text) {
+            const hudText = document.querySelector('#hudText');
+            if (hudText) {
+                hudText.setAttribute('value', text);
+            }
+        }
+
+        // Update info panel
+        function updateInfoPanel(text) {
+            const infoText = document.querySelector('#infoText');
+            if (infoText) {
+                infoText.setAttribute('value', text);
+            }
+        }
+
+        // Controller event handlers
+        AFRAME.registerComponent('controller-listener', {
+            init: function () {
+                const el = this.el;
+
+                // Button A - Rotate mode
+                el.addEventListener('abuttondown', (e) => {
+                    currentTool = 'rotate';
+                    updateHUD('TOOL: ROTATE');
+                });
+
+                // Button B - Reset
+                el.addEventListener('bbuttondown', (e) => {
+                    if (currentModel) {
+                        currentModel.setAttribute('rotation', '0 0 0');
+                        currentModel.setAttribute('position', '0 0 0');
+                        updateHUD('VIEW RESET');
+                    }
+                });
+
+                // Trigger - Select/Interact
+                el.addEventListener('triggerdown', (e) => {
+                    const raycaster = el.components.raycaster;
+                    const intersections = raycaster.intersections;
+                    if (intersections.length > 0) {
+                        const target = intersections[0].object.el;
+                        handleInteraction(target);
+                    }
+                });
+
+                // Grip - Grab
+                el.addEventListener('gripdown', (e) => {
+                    updateHUD('GRAB MODE');
+                });
+            }
+        });
+
+        // Handle tool/model button clicks
+        function handleInteraction(element) {
+            if (element.classList.contains('tool-btn')) {
+                const tool = element.getAttribute('data-tool');
+                currentTool = tool;
+                updateHUD(`TOOL: ${tool.toUpperCase()}`);
+            } else if (element.classList.contains('model-btn')) {
+                const modelType = element.getAttribute('data-model');
+                if (modelType === 'bolt') {
+                    loadTestModel();
+                } else if (modelType === 'generate') {
+                    generateModel();
+                }
+            }
+        }
+
+        // Add controller listeners to both controllers
+        document.querySelectorAll('[oculus-touch-controls]').forEach(controller => {
+            controller.setAttribute('controller-listener', '');
+        });
+
+        // Scene loaded event
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            console.log('Trinity VR Workspace initialized');
+            updateInfoPanel('TRINITY VR\\nOculus Quest 1\\nReady');
+        });
+
+        // Auto-detect VR headset
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                if (supported) {
+                    updateHUD('VR HEADSET DETECTED');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
