@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinity Connection Diagnostic</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #0f0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0, 20, 0, 0.8);
+            padding: 30px;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #0f0;
+        }
+        .subtitle {
+            text-align: center;
+            color: #0c0;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 10, 0, 0.5);
+            border: 1px solid #0a0;
+            border-radius: 5px;
+        }
+        .test-url {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .test-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .status-testing {
+            background: #555;
+            color: #fff;
+        }
+        .status-success {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 10px #0f0;
+        }
+        .status-failed {
+            background: #f00;
+            color: #fff;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        button {
+            background: linear-gradient(135deg, #0f0 0%, #0c0 100%);
+            border: 2px solid #0f0;
+            color: #000;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 15px 30px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+        }
+        button:disabled {
+            background: #333;
+            border-color: #555;
+            color: #666;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .button-group {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .recommendations {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 50, 0, 0.3);
+            border: 2px solid #0a0;
+            border-radius: 5px;
+        }
+        .recommendation-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #0f0;
+        }
+        .success-link {
+            display: block;
+            margin: 10px 0;
+            padding: 15px;
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            text-align: center;
+            text-decoration: none;
+            color: #0f0;
+            font-size: 20px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .success-link:hover {
+            background: rgba(0, 255, 0, 0.4);
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            transform: scale(1.02);
+        }
+        .info-box {
+            background: rgba(0, 100, 255, 0.1);
+            border: 1px solid #0af;
+            color: #0cf;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 TRINITY CONNECTION DIAGNOSTIC</h1>
+        <div class="subtitle">Quest VR Network Testing Tool</div>
+
+        <div class="info-box">
+            <strong>ℹ️ How this works:</strong><br>
+            This tool tests connectivity to your Trinity VR server from all possible network paths.
+            It will identify which connection method works best from your Quest headset.
+        </div>
+
+        <div class="button-group">
+            <button id="testAllBtn" onclick="testAllConnections()">🔍 Test All Connections</button>
+            <button id="reTestBtn" onclick="location.reload()" style="display:none;">🔄 Re-Test</button>
+        </div>
+
+        <div id="testResults"></div>
+
+        <div id="recommendations" class="recommendations" style="display:none;">
+            <h2>📊 Results & Recommendations</h2>
+            <div id="recommendationContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const testUrls = [
+            {
+                name: 'Tailscale Network',
+                url: 'http://100.66.103.8:8503',
+                description: 'Secure VPN connection (Quest must have Tailscale installed and logged in)'
+            },
+            {
+                name: 'Local WiFi (Primary)',
+                url: 'http://192.168.1.216:8503',
+                description: 'Direct WiFi connection (Quest and Mac must be on same WiFi network)'
+            },
+            {
+                name: 'Local WiFi (Secondary)',
+                url: 'http://192.168.1.248:8503',
+                description: 'Alternate local network interface'
+            },
+            {
+                name: 'Localhost',
+                url: 'http://localhost:8503',
+                description: 'Only works if testing from Mac itself'
+            }
+        ];
+
+        let testResults = [];
+        let workingUrls = [];
+
+        async function testConnection(urlObj) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-section';
+            resultDiv.innerHTML = `
+                <div class="test-url">${urlObj.name}</div>
+                <div style="color: #0a0; margin-bottom: 5px;">${urlObj.url}</div>
+                <div style="color: #888; font-size: 14px; margin-bottom: 10px;">${urlObj.description}</div>
+                <div class="test-status status-testing" id="status-${urlObj.url}">⏳ Testing...</div>
+                <div class="test-result" id="result-${urlObj.url}"></div>
+            `;
+            document.getElementById('testResults').appendChild(resultDiv);
+
+            const startTime = Date.now();
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch(urlObj.url + '/api/status', {
+                    signal: controller.signal,
+                    mode: 'cors'
+                });
+
+                clearTimeout(timeoutId);
+                const duration = Date.now() - startTime;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById(`status-${urlObj.url}`).className = 'test-status status-success';
+                    document.getElementById(`status-${urlObj.url}`).textContent = '✅ SUCCESS';
+
+                    document.getElementById(`result-${urlObj.url}`).innerHTML = `
+                        <strong>✓ Connection successful!</strong><br>
+                        Response time: ${duration}ms<br>
+                        Server uptime: ${data.uptime_human || 'N/A'}<br>
+                        Server version: ${data.version || 'N/A'}
+                    `;
+
+                    workingUrls.push({...urlObj, duration, data});
+                    return { success: true, duration, data };
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                document.getElementById(`status-${urlObj.url}`).className = 'test-status status-failed';
+                document.getElementById(`status-${urlObj.url}`).textContent = '❌ FAILED';
+
+                let errorMsg = error.message;
+                if (error.name === 'AbortError') {
+                    errorMsg = 'Timeout (5s) - Server not reachable';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMsg = 'Network error - Cannot reach server (CORS/firewall/network issue)';
+                }
+
+                document.getElementById(`result-${urlObj.url}`).innerHTML = `
+                    <strong>✗ Connection failed</strong><br>
+                    Error: ${errorMsg}<br>
+                    Time elapsed: ${duration}ms
+                `;
+
+                return { success: false, error: errorMsg, duration };
+            }
+        }
+
+        async function testAllConnections() {
+            document.getElementById('testAllBtn').disabled = true;
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('recommendations').style.display = 'none';
+            workingUrls = [];
+
+            for (const urlObj of testUrls) {
+                await testConnection(urlObj);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            showRecommendations();
+            document.getElementById('reTestBtn').style.display = 'inline-block';
+        }
+
+        function showRecommendations() {
+            const recDiv = document.getElementById('recommendations');
+            const contentDiv = document.getElementById('recommendationContent');
+            recDiv.style.display = 'block';
+
+            if (workingUrls.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="recommendation-item">
+                        <strong>❌ No connections successful</strong><br><br>
+                        <strong>Troubleshooting Steps:</strong><br><br>
+
+                        <strong>1. Verify Network Connection:</strong><br>
+                        • Ensure Quest and Mac are on the SAME WiFi network<br>
+                        • Open Quest browser and go to: http://192.168.1.216:8503<br>
+                        • Check if you can browse other websites on Quest<br><br>
+
+                        <strong>2. Check Mac Server:</strong><br>
+                        • Is the VR server running on Mac?<br>
+                        • Can you access http://192.168.1.216:8503 from Mac browser?<br><br>
+
+                        <strong>3. For Tailscale:</strong><br>
+                        • Install Tailscale app on Quest (Meta Quest Store)<br>
+                        • Log in with same account as Mac<br>
+                        • Then try: http://100.66.103.8:8503<br><br>
+
+                        <strong>4. Alternative: Use ngrok tunnel</strong><br>
+                        • Run on Mac: <code>ngrok http 8503</code><br>
+                        • Use the https:// URL provided<br>
+                        • Works from anywhere with internet<br>
+                    </div>
+                `;
+            } else {
+                // Sort by response time
+                workingUrls.sort((a, b) => a.duration - b.duration);
+
+                let html = `
+                    <div class="recommendation-item">
+                        <strong>✅ Found ${workingUrls.length} working connection(s)!</strong><br>
+                        Best connection: <strong>${workingUrls[0].name}</strong> (${workingUrls[0].duration}ms)
+                    </div>
+                `;
+
+                workingUrls.forEach((urlObj, index) => {
+                    const badge = index === 0 ? '🏆 RECOMMENDED' : '✓ Alternative';
+                    html += `
+                        <a href="${urlObj.url}/vr" class="success-link">
+                            ${badge}<br>
+                            ${urlObj.name}<br>
+                            <span style="font-size: 16px;">${urlObj.url}/vr</span><br>
+                            <span style="font-size: 12px; opacity: 0.8;">Response time: ${urlObj.duration}ms</span>
+                        </a>
+                    `;
+                });
+
+                html += `
+                    <div class="recommendation-item" style="margin-top: 20px;">
+                        <strong>📱 Next Steps:</strong><br>
+                        1. Click the recommended link above to launch Trinity VR<br>
+                        2. Bookmark the URL in Quest browser for easy access<br>
+                        3. Or scan QR code (if you generated one)<br>
+                        4. Put on your headset and enter VR mode! 🥽
+                    </div>
+                `;
+
+                contentDiv.innerHTML = html;
+            }
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testAllConnections, 1000);
+        });
+    </script>
+</body>
+</html>

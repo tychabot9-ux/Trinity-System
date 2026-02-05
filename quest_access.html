@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quest VR Access - Trinity System (Local)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .subtitle {
+            font-size: 1.2em;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+        .url-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 1.3em;
+            word-break: break-all;
+        }
+        .qr-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            margin: 30px 0;
+        }
+        .instructions {
+            text-align: left;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .instructions h2 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .instructions li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .status {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #4CAF50;
+        }
+        .warning {
+            background: rgba(255, 152, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #FF9800;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥽 Quest VR Access</h1>
+        <div class="subtitle">Trinity Engineering Workspace (Local Network)</div>
+
+        <div class="status">
+            ✅ SERVER ONLINE | 📡 LOCAL NETWORK ACCESS
+        </div>
+
+        <div class="warning">
+            ⚠️ Quest must be on the same WiFi network as this Mac
+        </div>
+
+        <div class="url-box">
+            <strong>VR Workspace URL:</strong><br>
+            <a href="http://192.168.1.216:8503/vr" style="color: #4CAF50; text-decoration: none;">http://192.168.1.216:8503/vr</a>
+        </div>
+
+        <div class="qr-container">
+            <img src="quest_qr_code.png" alt="QR Code" style="width: 300px; height: 300px;">
+        </div>
+
+        <div>
+            <a href="http://192.168.1.216:8503/vr" class="button">🚀 Launch VR Workspace</a>
+            <a href="http://192.168.1.216:8503/api/status" class="button">📊 Server Status</a>
+        </div>
+
+        <div class="instructions">
+            <h2>📱 Quest Setup Instructions:</h2>
+            <ol>
+                <li>⚠️ <strong>IMPORTANT:</strong> Connect your Quest to the same WiFi network</li>
+                <li>Open <strong>Oculus Browser</strong> on your Quest VR headset</li>
+                <li>Scan the QR code above OR manually enter: http://192.168.1.216:8503/vr</li>
+                <li>Bookmark the page for quick access</li>
+                <li>Click "Enter VR" when the page loads</li>
+                <li>Enjoy your VR engineering workspace!</li>
+            </ol>
+
+            <h2>🔧 Features:</h2>
+            <ul>
+                <li>Real-time CAD model viewing and manipulation</li>
+                <li>Voice command integration with Trinity AI</li>
+                <li>Clipboard sync between Quest and Mac</li>
+                <li>3D model generation from voice prompts</li>
+            </ul>
+
+            <h2>⚡ Quick Access URLs:</h2>
+            <ul>
+                <li><strong>VR Workspace:</strong> http://192.168.1.216:8503/vr</li>
+                <li><strong>Server Status:</strong> http://192.168.1.216:8503/api/status</li>
+                <li><strong>Models List:</strong> http://192.168.1.216:8503/api/models</li>
+            </ul>
+
+            <h2>🌐 Want Public Internet Access?</h2>
+            <p>To access from anywhere (not just local WiFi):</p>
+            <ol>
+                <li>Sign up for free ngrok account: https://dashboard.ngrok.com/signup</li>
+                <li>Get authtoken: https://dashboard.ngrok.com/get-started/your-authtoken</li>
+                <li>Run: ngrok config add-authtoken YOUR_TOKEN</li>
+                <li>Run: python3 quest_setup.py</li>
+            </ol>
+        </div>
+
+        <div style="margin-top: 30px; font-size: 0.9em; color: #888;">
+            Generated: Wed Feb  4 18:47:25 PST 2026<br>
+            Trinity VR System v1.0 - Local Network Mode<br>
+            Local IP: 192.168.1.216 | Port: 8503
+        </div>
+    </div>
+</body>
+</html>

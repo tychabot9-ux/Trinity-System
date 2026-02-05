@@ -399,8 +399,8 @@ def generate_scad_code(prompt: str, vr_mode: bool = False) -> str:
 
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        # Use gemini-1.5-pro for better results (gemini-pro is deprecated)
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        # Use gemini-2.5-flash for better results and faster generation
+        model = genai.GenerativeModel('gemini-2.5-flash')
     except Exception as e:
         return f"// Error configuring Gemini API: {str(e)}"
 
@@ -442,12 +442,26 @@ def compile_scad_to_stl(scad_code: str, output_name: str, timeout: int = 60) -> 
         CAD_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # Sanitize output name to prevent path traversal
+        # Sanitize output name to prevent path traversal - strict security
         safe_output_name = "".join(c for c in output_name if c.isalnum() or c in ('_', '-'))
-        base_name = f"{timestamp}_{safe_output_name}"
+
+        # Additional security: ensure no path traversal characters remain
+        if '..' in safe_output_name or '/' in safe_output_name or '\\' in safe_output_name:
+            safe_output_name = safe_output_name.replace('..', '').replace('/', '').replace('\\', '')
+
+        # Limit length to prevent DOS
+        safe_output_name = safe_output_name[:50]
+
+        base_name = f"{timestamp}_{safe_output_name}" if safe_output_name else timestamp
 
         scad_path = CAD_OUTPUT_DIR / f"{base_name}.scad"
         stl_path = CAD_OUTPUT_DIR / f"{base_name}.stl"
+
+        # Final security check: ensure paths are within CAD_OUTPUT_DIR
+        if not scad_path.resolve().is_relative_to(CAD_OUTPUT_DIR.resolve()):
+            return False, "Security error: Path traversal attempt blocked", None
+        if not stl_path.resolve().is_relative_to(CAD_OUTPUT_DIR.resolve()):
+            return False, "Security error: Path traversal attempt blocked", None
 
         # Write SCAD file
         try:
@@ -765,8 +779,8 @@ def process_ai_message(user_message: str, uploaded_files: list = None) -> str:
 
         genai.configure(api_key=GEMINI_API_KEY)
 
-        # Use gemini-1.5-pro for all cases (supports vision, text, and files)
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        # Use gemini-2.5-flash for all cases (supports vision, text, and files)
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
         # Get Trinity Memory for enhanced context
         memory = get_memory()
@@ -992,7 +1006,7 @@ Answer the user's query based on the Trinity Memory database above. Be specific,
                     st.error("⚠️ GEMINI_API_KEY not configured")
                 else:
                     genai.configure(api_key=GEMINI_API_KEY)
-                    model = genai.GenerativeModel('gemini-1.5-pro')
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                     response = model.generate_content(memory_context)
 
                     # Display results
