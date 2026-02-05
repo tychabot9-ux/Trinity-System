@@ -1169,10 +1169,10 @@ def render_ai_assistant_station():
         st.caption(f"💬 {len(st.session_state.chat_history)} messages")
 
 def render_business_station():
-    """Render the Autonomous Business Dashboard."""
-    st.header("💼 Autonomous Business Operations")
+    """Render the Autonomous Business Dashboard with 30+ Money-Making Services."""
+    st.header("💼 Trinity Business Operations")
 
-    st.info("**Trinity Autonomous Income System** - Ethical, legal, fully automated revenue generation")
+    st.success("**🚀 30+ Revenue Streams Ready** - Quick wins to premium services")
 
     # Create business database if it doesn't exist
     business_db = BASE_DIR / "business_data" / "autonomous_business.db"
@@ -1197,7 +1197,76 @@ def render_business_station():
                     (date TEXT PRIMARY KEY, electricity REAL, internet REAL,
                      api_costs REAL, taxes REAL, total REAL)''')
 
+        # New table: Service catalog with 30+ services
+        c.execute('''CREATE TABLE IF NOT EXISTS services
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                     name TEXT UNIQUE,
+                     category TEXT,
+                     tier TEXT,
+                     price_min REAL,
+                     price_max REAL,
+                     delivery_days REAL,
+                     hourly_rate REAL,
+                     status TEXT,
+                     orders_completed INTEGER DEFAULT 0,
+                     revenue_total REAL DEFAULT 0.0,
+                     last_order_date TEXT,
+                     fiverr_url TEXT,
+                     upwork_url TEXT,
+                     notes TEXT)''')
+
         conn.commit()
+
+        # Initialize services catalog (run once)
+        c.execute("SELECT COUNT(*) FROM services")
+        if c.fetchone()[0] == 0:
+            services_data = [
+                # TIER 1: QUICK WINS ($25-100, 1-2 days)
+                ("QR Code Generation", "Specialized", "Quick Win", 25, 100, 0.5, 300, "Ready to Test"),
+                ("3D Model Generation", "3D Modeling", "Quick Win", 50, 300, 1, 150, "Ready to Test"),
+                ("Python Automation Script", "Automation", "Quick Win", 75, 150, 1, 100, "Ready to Test"),
+                ("Web Scraping Task", "Web Scraping", "Quick Win", 75, 100, 1, 75, "Ready to Test"),
+
+                # TIER 2: MEDIUM PROJECTS ($150-400, 3-5 days)
+                ("Streamlit Dashboard", "Dashboards", "Medium", 250, 800, 4, 60, "Ready to Test"),
+                ("Social Media Automation Bot", "AI Automation", "Medium", 200, 350, 4, 60, "Ready to Test"),
+                ("Job Board Scraper", "Web Scraping", "Medium", 100, 500, 3, 50, "Ready to Test"),
+                ("System Health Monitor", "Monitoring", "Medium", 150, 400, 3, 50, "Ready to Test"),
+                ("AI Chatbot Integration", "AI Automation", "Medium", 150, 500, 3, 65, "Ready to Test"),
+                ("Database Design", "Database", "Medium", 150, 400, 3, 50, "Ready to Test"),
+                ("API Development", "Database", "Medium", 300, 1000, 7, 60, "Not Started"),
+
+                # TIER 3: PREMIUM SERVICES ($500-2,000, 1-2 weeks)
+                ("Custom Trading Bot", "Trading", "Premium", 800, 2000, 10, 80, "Not Started"),
+                ("VR Workspace Development", "3D Modeling", "Premium", 600, 1000, 7, 85, "Ready to Test"),
+                ("Full Dashboard Suite", "Dashboards", "Premium", 700, 1200, 10, 70, "Not Started"),
+                ("AI Automation Platform", "AI Automation", "Premium", 1000, 2000, 14, 75, "Not Started"),
+
+                # RECURRING REVENUE SERVICES
+                ("AI Influencer Automation (Basic)", "AI Automation", "Recurring", 300, 300, 30, 0, "Not Started"),
+                ("AI Influencer Automation (Standard)", "AI Automation", "Recurring", 600, 600, 30, 0, "Not Started"),
+                ("AI Influencer Automation (Premium)", "AI Automation", "Recurring", 1200, 1200, 30, 0, "Not Started"),
+
+                # ADDITIONAL QUICK SERVICES
+                ("Voice AI System", "AI Automation", "Medium", 150, 400, 3, 65, "Ready to Test"),
+                ("Trading Signal Dashboard", "Trading", "Medium", 200, 500, 4, 55, "Not Started"),
+                ("Portfolio Tracker", "Trading", "Medium", 300, 700, 5, 60, "Not Started"),
+                ("VR 3D Content", "3D Modeling", "Medium", 150, 600, 4, 70, "Not Started"),
+                ("Custom Web Scraper", "Web Scraping", "Medium", 150, 600, 4, 50, "Not Started"),
+                ("Database Optimization", "Database", "Quick Win", 100, 400, 2, 75, "Ready to Test"),
+                ("File System Automation", "Automation", "Quick Win", 80, 250, 2, 60, "Ready to Test"),
+                ("Mobile Dashboard", "Dashboards", "Medium", 300, 700, 6, 55, "Not Started"),
+                ("AI Content Writer", "AI Automation", "Medium", 200, 500, 4, 60, "Not Started"),
+                ("Image Generation Integration", "AI Automation", "Medium", 200, 500, 4, 60, "Not Started"),
+                ("Clipboard Sync Tool", "Specialized", "Quick Win", 100, 300, 2, 65, "Ready to Test"),
+                ("VPN Setup Service", "Specialized", "Medium", 150, 400, 2, 85, "Not Started"),
+            ]
+
+            for service in services_data:
+                c.execute("""INSERT OR IGNORE INTO services
+                           (name, category, tier, price_min, price_max, delivery_days, hourly_rate, status)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", service)
+            conn.commit()
 
         # Calculate totals
         c.execute("SELECT SUM(amount) FROM earnings WHERE date LIKE ?", (datetime.now().strftime('%Y-%m') + '%',))
@@ -1208,111 +1277,281 @@ def render_business_station():
         quarterly_total = c.fetchone()[0] or 0.0
 
         c.execute("SELECT SUM(amount) FROM earnings")
-        retirement_fund = c.fetchone()[0] or 0.0
+        all_time_total = c.fetchone()[0] or 0.0
+
+        c.execute("SELECT SUM(revenue_total) FROM services")
+        services_revenue = c.fetchone()[0] or 0.0
+
+        c.execute("SELECT COUNT(*) FROM services WHERE status = 'Launched'")
+        launched_count = c.fetchone()[0] or 0
+
+        c.execute("SELECT COUNT(*) FROM services WHERE status = 'Ready to Test'")
+        ready_count = c.fetchone()[0] or 0
 
         # Dashboard metrics
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("💰 Monthly Income", f"${monthly_total:,.2f}")
+            st.metric("💰 Monthly Revenue", f"${monthly_total:,.0f}")
         with col2:
-            st.metric("📈 Quarterly Total", f"${quarterly_total:,.2f}")
+            st.metric("📈 Services Revenue", f"${services_revenue:,.0f}")
         with col3:
-            progress = (retirement_fund / 250000.0) * 100
-            st.metric("🎯 Retirement Fund", f"${retirement_fund:,.2f}",
-                     f"{progress:.1f}% to $250k goal")
+            st.metric("🚀 Launched", f"{launched_count}/30")
+        with col4:
+            st.metric("✅ Ready to Test", f"{ready_count}")
 
         st.divider()
 
-        # Income Streams Status
-        st.subheader("📊 Active Income Streams")
+        # Tab navigation for different views
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 Service Catalog", "💵 Revenue Tracking", "🎯 Quick Launch", "📋 Opportunities"])
 
-        col1, col2 = st.columns(2)
+        with tab1:
+            st.subheader("🛍️ Complete Service Catalog (30+ Services)")
 
-        with col1:
+            # Filter by tier
+            tier_filter = st.selectbox("Filter by Tier", ["All", "Quick Win", "Medium", "Premium", "Recurring"])
+
+            # Get services
+            if tier_filter == "All":
+                c.execute("""SELECT name, category, tier, price_min, price_max, delivery_days,
+                           hourly_rate, status, orders_completed, revenue_total
+                           FROM services ORDER BY tier, category, name""")
+            else:
+                c.execute("""SELECT name, category, tier, price_min, price_max, delivery_days,
+                           hourly_rate, status, orders_completed, revenue_total
+                           FROM services WHERE tier = ? ORDER BY category, name""", (tier_filter,))
+
+            services = c.fetchall()
+
+            if services:
+                for service in services:
+                    name, category, tier, price_min, price_max, days, hourly, status, orders, revenue = service
+
+                    # Status color
+                    status_colors = {
+                        "Not Started": "🔴",
+                        "Ready to Test": "🟡",
+                        "Testing": "🟠",
+                        "Launched": "🟢"
+                    }
+                    status_emoji = status_colors.get(status, "⚪")
+
+                    with st.expander(f"{status_emoji} {name} - ${price_min}-{price_max}"):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.caption("**Category:**")
+                            st.write(category)
+                            st.caption("**Tier:**")
+                            st.write(tier)
+                        with col2:
+                            st.caption("**Pricing:**")
+                            st.write(f"${price_min}-${price_max}")
+                            st.caption("**Delivery:**")
+                            st.write(f"{days} days")
+                        with col3:
+                            st.caption("**Hourly Rate:**")
+                            st.write(f"${hourly}/hr")
+                            st.caption("**Status:**")
+                            st.write(status)
+
+                        if orders > 0:
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric("Orders Completed", orders)
+                            with col2:
+                                st.metric("Total Revenue", f"${revenue:,.0f}")
+
+                        # Quick actions
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            if status == "Not Started":
+                                if st.button("🧪 Mark Ready to Test", key=f"ready_{name}"):
+                                    c.execute("UPDATE services SET status = 'Ready to Test' WHERE name = ?", (name,))
+                                    conn.commit()
+                                    st.rerun()
+                        with col2:
+                            if status == "Ready to Test":
+                                if st.button("🚀 Mark as Launched", key=f"launch_{name}"):
+                                    c.execute("UPDATE services SET status = 'Launched' WHERE name = ?", (name,))
+                                    conn.commit()
+                                    st.success(f"Launched {name}!")
+                                    st.rerun()
+                        with col3:
+                            if status == "Launched":
+                                if st.button("➕ Add Order", key=f"order_{name}"):
+                                    st.session_state[f'adding_order_{name}'] = True
+                                    st.rerun()
+
+                        # Add order form
+                        if st.session_state.get(f'adding_order_{name}', False):
+                            with st.form(key=f"order_form_{name}"):
+                                order_amount = st.number_input("Order Amount ($)", min_value=0.0, value=float(price_min))
+                                order_notes = st.text_input("Notes (optional)")
+                                submitted = st.form_submit_button("Submit Order")
+                                if submitted:
+                                    # Update service stats
+                                    c.execute("""UPDATE services
+                                               SET orders_completed = orders_completed + 1,
+                                                   revenue_total = revenue_total + ?,
+                                                   last_order_date = ?
+                                               WHERE name = ?""",
+                                             (order_amount, datetime.now().strftime('%Y-%m-%d'), name))
+                                    # Add to earnings
+                                    c.execute("""INSERT INTO earnings VALUES (?, ?, ?, ?)""",
+                                             (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                              name, order_amount, order_notes or "Order completed"))
+                                    conn.commit()
+                                    st.session_state[f'adding_order_{name}'] = False
+                                    st.success(f"Order recorded: ${order_amount}")
+                                    st.rerun()
+            else:
+                st.info("No services found")
+
+        with tab2:
+            st.subheader("💵 Revenue Analytics")
+
+            # Overall stats
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("All-Time Revenue", f"${all_time_total:,.0f}")
+            with col2:
+                st.metric("This Quarter", f"${quarterly_total:,.0f}")
+            with col3:
+                target_progress = (all_time_total / 100000.0) * 100
+                st.metric("To $100k Goal", f"{target_progress:.1f}%")
+
+            st.divider()
+
+            # Revenue by category
+            c.execute("""SELECT category, SUM(revenue_total) as total
+                       FROM services GROUP BY category ORDER BY total DESC""")
+            cat_revenue = c.fetchall()
+
+            if cat_revenue:
+                st.caption("**Revenue by Category:**")
+                for cat, total in cat_revenue:
+                    if total > 0:
+                        st.write(f"**{cat}:** ${total:,.0f}")
+
+            st.divider()
+
+            # Top performers
+            c.execute("""SELECT name, orders_completed, revenue_total
+                       FROM services WHERE orders_completed > 0
+                       ORDER BY revenue_total DESC LIMIT 5""")
+            top_services = c.fetchall()
+
+            if top_services:
+                st.caption("**Top 5 Services:**")
+                for svc_name, orders, rev in top_services:
+                    st.write(f"**{svc_name}:** {orders} orders, ${rev:,.0f}")
+
+        with tab3:
+            st.subheader("🎯 Quick Launch Services")
+            st.info("**These 3 services are tested and ready to launch THIS WEEK**")
+
+            quick_wins = [
+                ("QR Code Generation", 25, "10 min", 300),
+                ("3D Model Generation", 50, "30 min", 150),
+                ("Python Automation Script", 75, "1 hour", 100)
+            ]
+
+            for service_name, price, time, hourly in quick_wins:
+                with st.container():
+                    col1, col2, col3, col4 = st.columns([3, 1, 1, 2])
+                    with col1:
+                        st.write(f"**{service_name}**")
+                    with col2:
+                        st.write(f"${price}")
+                    with col3:
+                        st.write(time)
+                    with col4:
+                        st.write(f"${hourly}/hr effective")
+
+            st.divider()
+
             st.markdown("""
-            **Pillar 1: API Marketplace** ⚙️
-            - Status: Ready to deploy
-            - Setup time: 2-3 days
-            - Potential: $500-5,000/mo passive
+            ### 📋 Launch Checklist:
 
-            **Pillar 2: SaaS Products** 💻
-            - Status: Ready to build
-            - Setup time: 1-2 weeks per product
-            - Potential: $1,000-10,000/mo passive
+            **Week 1 (This Week):**
+            - [ ] Test QR codes (3 hours) - See CAPABILITY_TESTING_CHECKLIST.md
+            - [ ] Test 3D models (4 hours)
+            - [ ] Test Python scripts (5 hours)
+
+            **Week 2:**
+            - [ ] Create Fiverr gigs (Friday)
+            - [ ] Set competitive pricing
+            - [ ] Upload portfolio screenshots
+
+            **Week 3:**
+            - [ ] Deliver first 5-10 orders
+            - [ ] Get 5-star reviews
+            - [ ] Target: $500-1,000 revenue
             """)
 
-        with col2:
-            st.markdown("""
-            **Pillar 3: Job Opportunities** 🎯
-            - Status: Framework ready
-            - Setup time: 1-2 days
-            - Potential: $2,000-8,000/mo active
+            if st.button("📄 Open Full Testing Checklist", use_container_width=True):
+                try:
+                    with open(BASE_DIR / "CAPABILITY_TESTING_CHECKLIST.md", 'r') as f:
+                        st.text_area("Testing Checklist", f.read(), height=400)
+                except:
+                    st.error("Testing checklist not found")
 
-            **Pillar 4: Open Source** ⭐
-            - Status: Ready to publish
-            - Setup time: 1 week
-            - Potential: $200-3,000/mo passive
-            """)
+        with tab4:
+            st.subheader("🔍 Opportunity Queue")
 
-        st.divider()
+            c.execute("SELECT COUNT(*) FROM opportunities WHERE status = 'pending'")
+            pending_count = c.fetchone()[0] or 0
 
-        # Opportunity Queue
-        st.subheader("🔍 Opportunity Queue")
+            if pending_count > 0:
+                st.info(f"**{pending_count} opportunities** awaiting review")
 
-        c.execute("SELECT COUNT(*) FROM opportunities WHERE status = 'pending'")
-        pending_count = c.fetchone()[0] or 0
+                # Show opportunities
+                c.execute("""SELECT id, platform, title, pay, estimated_hours,
+                            capability_match, profitability, risk_level
+                            FROM opportunities WHERE status = 'pending'
+                            ORDER BY profitability DESC LIMIT 5""")
+                opportunities = c.fetchall()
 
-        if pending_count > 0:
-            st.info(f"**{pending_count} opportunities** awaiting review")
+                for opp in opportunities:
+                    opp_id, platform, title, pay, hours, match, profit, risk = opp
 
-            # Show opportunities
-            c.execute("""SELECT id, platform, title, pay, estimated_hours,
-                        capability_match, profitability, risk_level
-                        FROM opportunities WHERE status = 'pending'
-                        ORDER BY profitability DESC LIMIT 5""")
-            opportunities = c.fetchall()
+                    with st.expander(f"💼 {title} - ${pay:,.0f}"):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Platform", platform)
+                            st.metric("Pay", f"${pay:,.0f}")
+                        with col2:
+                            st.metric("Est. Hours", f"{hours:.1f}h")
+                            st.metric("Match", f"{match:.0%}")
+                        with col3:
+                            st.metric("Profitability", f"${profit:,.0f}")
+                            st.metric("Risk", risk)
 
-            for opp in opportunities:
-                opp_id, platform, title, pay, hours, match, profit, risk = opp
-
-                with st.expander(f"💼 {title} - ${pay:,.0f}"):
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Platform", platform)
-                        st.metric("Pay", f"${pay:,.0f}")
-                    with col2:
-                        st.metric("Est. Hours", f"{hours:.1f}h")
-                        st.metric("Match", f"{match:.0%}")
-                    with col3:
-                        st.metric("Profitability", f"${profit:,.0f}")
-                        st.metric("Risk", risk)
-
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        if st.button("✅ Accept", key=f"accept_{opp_id}"):
-                            c.execute("UPDATE opportunities SET status = 'accepted' WHERE id = ?", (opp_id,))
-                            conn.commit()
-                            st.success("Opportunity accepted!")
-                            st.rerun()
-                    with col2:
-                        if st.button("❌ Decline", key=f"decline_{opp_id}"):
-                            c.execute("UPDATE opportunities SET status = 'declined' WHERE id = ?", (opp_id,))
-                            conn.commit()
-                            st.info("Opportunity declined")
-                            st.rerun()
-                    with col3:
-                        if st.button("📝 Review Later", key=f"later_{opp_id}"):
-                            st.info("Will review later")
-        else:
-            st.info("No pending opportunities. Autonomous monitoring active.")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            if st.button("✅ Accept", key=f"accept_{opp_id}"):
+                                c.execute("UPDATE opportunities SET status = 'accepted' WHERE id = ?", (opp_id,))
+                                conn.commit()
+                                st.success("Opportunity accepted!")
+                                st.rerun()
+                        with col2:
+                            if st.button("❌ Decline", key=f"decline_{opp_id}"):
+                                c.execute("UPDATE opportunities SET status = 'declined' WHERE id = ?", (opp_id,))
+                                conn.commit()
+                                st.info("Opportunity declined")
+                                st.rerun()
+                        with col3:
+                            if st.button("📝 Review Later", key=f"later_{opp_id}"):
+                                st.info("Will review later")
+            else:
+                st.info("No pending opportunities. Autonomous monitoring active.")
 
         st.divider()
 
         # Recent Activity
-        st.subheader("📋 Recent Activity")
+        st.subheader("📋 Recent Activity & Earnings Log")
 
         c.execute("""SELECT date, source, amount, description
-                    FROM earnings ORDER BY date DESC LIMIT 10""")
+                    FROM earnings ORDER BY date DESC LIMIT 15""")
         recent_earnings = c.fetchall()
 
         if recent_earnings:
@@ -1325,39 +1564,112 @@ def render_business_station():
                 with col3:
                     st.caption(f"**${amount:.2f}** - {desc}")
         else:
-            st.caption("No earnings yet. Deploy income streams to start tracking.")
+            st.caption("No earnings yet. Launch quick win services to start earning!")
 
         st.divider()
 
-        # Quick Actions
-        st.subheader("⚡ Quick Actions")
+        # Planning Documents
+        st.subheader("📚 Strategic Planning Documents")
 
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            if st.button("📄 View Business Model", use_container_width=True):
+            if st.button("📄 Master Decade Plan", use_container_width=True):
                 try:
-                    with open(BASE_DIR / "AUTONOMOUS_BUSINESS_MODEL.md", 'r') as f:
-                        st.text_area("Autonomous Business Model", f.read(), height=400)
+                    with open(BASE_DIR / "MASTER_DECADE_PLAN_MONTHLY.md", 'r') as f:
+                        content = f.read()
+                        st.text_area("Master Decade Plan (120-month roadmap)", content[:5000] + "\n\n...(truncated, see file for full plan)", height=400)
                 except:
-                    st.error("Business model document not found")
+                    st.error("Master plan not found")
+
+            if st.button("🧪 Testing Checklist", use_container_width=True):
+                try:
+                    with open(BASE_DIR / "CAPABILITY_TESTING_CHECKLIST.md", 'r') as f:
+                        content = f.read()
+                        st.text_area("Pre-Launch Testing Checklist", content[:5000] + "\n\n...(truncated, see file for full checklist)", height=400)
+                except:
+                    st.error("Testing checklist not found")
 
         with col2:
-            if st.button("📊 Export Earnings", use_container_width=True):
-                c.execute("SELECT * FROM earnings")
-                earnings_data = c.fetchall()
-                st.json({"earnings": [{"date": e[0], "source": e[1], "amount": e[2], "description": e[3]}
-                                     for e in earnings_data]})
+            if st.button("💰 Money-Making Guide", use_container_width=True):
+                try:
+                    with open(BASE_DIR / "TRINITY_MONEY_MAKING_CAPABILITIES.md", 'r') as f:
+                        content = f.read()
+                        st.text_area("30+ Money-Making Services", content[:5000] + "\n\n...(truncated, see file for complete guide)", height=400)
+                except:
+                    st.error("Money-making guide not found")
+
+            if st.button("🚀 Optimization Strategies", use_container_width=True):
+                try:
+                    with open(BASE_DIR / "WEALTH_OPTIMIZATION_STRATEGIES.md", 'r') as f:
+                        content = f.read()
+                        st.text_area("10 Optimization Levers", content[:5000] + "\n\n...(truncated, see file for full strategies)", height=400)
+                except:
+                    st.error("Optimization strategies not found")
 
         with col3:
-            if st.button("➕ Add Test Earning", use_container_width=True):
-                # Add a test earning
-                test_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                c.execute("INSERT OR IGNORE INTO earnings VALUES (?, ?, ?, ?)",
-                         (test_date, "API Sale", 29.00, "Monthly subscription"))
-                conn.commit()
-                st.success("Test earning added!")
-                st.rerun()
+            if st.button("📈 Trading Flywheel Plan", use_container_width=True):
+                try:
+                    with open(BASE_DIR / "DECADE_PLAN_WITH_FLYWHEEL.md", 'r') as f:
+                        content = f.read()
+                        st.text_area("Genesis V2 Flywheel Integration", content[:5000] + "\n\n...(truncated, see file for full plan)", height=400)
+                except:
+                    st.error("Flywheel plan not found")
+
+            if st.button("📊 Export All Data", use_container_width=True):
+                # Export all business data
+                c.execute("SELECT * FROM services")
+                services_data = c.fetchall()
+                c.execute("SELECT * FROM earnings")
+                earnings_data = c.fetchall()
+
+                export = {
+                    "services": [{
+                        "name": s[1], "category": s[2], "tier": s[3],
+                        "price": f"${s[4]}-${s[5]}", "status": s[8],
+                        "orders": s[9], "revenue": s[10]
+                    } for s in services_data],
+                    "earnings": [{
+                        "date": e[0], "source": e[1],
+                        "amount": e[2], "description": e[3]
+                    } for e in earnings_data],
+                    "summary": {
+                        "total_revenue": all_time_total,
+                        "monthly_revenue": monthly_total,
+                        "launched_services": launched_count,
+                        "ready_to_test": ready_count
+                    }
+                }
+                st.json(export)
+
+        st.divider()
+
+        # Quick Stats Summary
+        st.subheader("📊 Quick Stats")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        c.execute("SELECT COUNT(*) FROM services WHERE tier = 'Quick Win'")
+        quick_win_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM services WHERE tier = 'Medium'")
+        medium_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM services WHERE tier = 'Premium'")
+        premium_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM services WHERE tier = 'Recurring'")
+        recurring_count = c.fetchone()[0]
+
+        with col1:
+            st.metric("Quick Wins", f"{quick_win_count} services")
+            st.caption("$25-100, 1-2 days")
+        with col2:
+            st.metric("Medium", f"{medium_count} services")
+            st.caption("$150-400, 3-5 days")
+        with col3:
+            st.metric("Premium", f"{premium_count} services")
+            st.caption("$500-2k, 1-2 weeks")
+        with col4:
+            st.metric("Recurring", f"{recurring_count} services")
+            st.caption("$300-1.2k/month")
 
         conn.close()
 
