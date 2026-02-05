@@ -15,19 +15,40 @@ VR Server for Trinity Engineering Station
 
 import os
 import json
+import time
+import logging
 from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
+from datetime import datetime
 import subprocess
 
 # Configuration
 VR_PORT = 8503
 BASE_DIR = Path(__file__).parent
 CAD_OUTPUT_DIR = BASE_DIR / "cad_output"
-VR_WORKSPACE_FILE = BASE_DIR / "vr_workspace.html"
+VR_WORKSPACE_FILE = BASE_DIR / "vr_workspace_wireless.html"
+LOG_DIR = BASE_DIR / "logs"
 
 # Ensure directories exist
 CAD_OUTPUT_DIR.mkdir(exist_ok=True)
+LOG_DIR.mkdir(exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_DIR / 'vr_server.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Server stats
+SERVER_START_TIME = time.time()
+REQUEST_COUNT = 0
+ACTIVE_CONNECTIONS = 0
 
 class TrinityVRHandler(SimpleHTTPRequestHandler):
     """Custom HTTP handler for Trinity VR Workspace."""
@@ -38,7 +59,11 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         """Handle GET requests."""
+        global REQUEST_COUNT
+        REQUEST_COUNT += 1
+
         parsed_path = urlparse(self.path)
+        logger.info(f"GET {parsed_path.path} from {self.client_address[0]}")
 
         # Serve main VR workspace
         if parsed_path.path == '/' or parsed_path.path == '/vr':
@@ -47,6 +72,31 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             with open(VR_WORKSPACE_FILE, 'rb') as f:
                 self.wfile.write(f.read())
+            return
+
+        # Server status endpoint
+        elif parsed_path.path == '/api/status':
+            uptime = time.time() - SERVER_START_TIME
+            status = {
+                'status': 'online',
+                'uptime': uptime,
+                'uptime_human': f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m",
+                'requests': REQUEST_COUNT,
+                'models_count': len(list(CAD_OUTPUT_DIR.glob('*.stl'))),
+                'timestamp': datetime.now().isoformat(),
+                'version': '1.0',
+                'wireless': True,
+                'network': {
+                    'tailscale': self._get_tailscale_ip(),
+                    'local': self._get_local_ip()
+                }
+            }
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(status).encode())
             return
 
         # List available models
@@ -72,6 +122,27 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
         else:
             # Add CORS headers for cross-origin requests
             super().do_GET()
+
+    def _get_tailscale_ip(self):
+        """Get Tailscale IP address."""
+        try:
+            result = subprocess.run(['tailscale', 'ip', '-4'],
+                                  capture_output=True, text=True, timeout=2)
+            return result.stdout.strip() if result.returncode == 0 else None
+        except:
+            return None
+
+    def _get_local_ip(self):
+        """Get local WiFi IP address."""
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return None
 
     def do_POST(self):
         """Handle POST requests."""

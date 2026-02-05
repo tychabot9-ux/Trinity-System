@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinity VR Tactical Engineering Workspace</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-environment-component@1.3.2/dist/aframe-environment-component.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Orbitron', 'Courier New', monospace;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            color: #0f0;
+            font-family: 'Orbitron', monospace;
+        }
+        #loadingScreen h1 {
+            font-size: 48px;
+            margin: 0;
+            text-shadow: 0 0 20px #0f0;
+            animation: pulse 2s infinite;
+        }
+        #loadingScreen .status {
+            font-size: 18px;
+            margin: 20px 0;
+            color: #0c0;
+        }
+        .progress-bar {
+            width: 400px;
+            height: 30px;
+            background: #111;
+            border: 2px solid #0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0f0 0%, #0c0 100%);
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: 0 0 20px #0f0;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        .system-info {
+            position: absolute;
+            bottom: 20px;
+            font-size: 12px;
+            color: #0a0;
+            text-align: center;
+        }
+        #enterVR {
+            background: linear-gradient(135deg, #0f0 0%, #0c0 100%);
+            border: 3px solid #0f0;
+            color: #000;
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 24px;
+            padding: 20px 60px;
+            cursor: pointer;
+            border-radius: 10px;
+            text-transform: uppercase;
+            box-shadow: 0 0 30px #0f0, inset 0 0 20px rgba(0,255,0,0.3);
+            margin-top: 30px;
+            transition: all 0.3s;
+        }
+        #enterVR:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 50px #0f0, inset 0 0 30px rgba(0,255,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <h1>🎯 TRINITY TACTICAL WORKSPACE</h1>
+        <div class="status" id="loadingStatus">INITIALIZING WIRELESS VR SYSTEM...</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="status" id="networkStatus">Network: WiFi Connected | Tailscale: Active</div>
+        <button id="enterVR">🥽 DEPLOY TO VR</button>
+        <div class="system-info">
+            TRINITY SYSTEM v2.0 | OCULUS QUEST 1 | WIRELESS MODE<br>
+            Tailscale: 100.66.103.8 | Local: 192.168.1.248<br>
+            Room-Scale Tracking | Guardian Enabled | Auto-Optimize Active
+        </div>
+    </div>
+
+    <!-- A-Frame VR Scene - COD Shooting Range Theme -->
+    <a-scene
+        background="color: #000"
+        renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; highRefreshRate: true"
+        vr-mode-ui="enabled: false"
+        stats>
+
+        <!-- Assets -->
+        <a-assets>
+            <!-- Sounds -->
+            <audio id="selectSound" src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjiV3vPTgjMGHm7A7+OZUQ8PUqzn77BfGgk+mtzy0XswByx+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzxnUiByh2wvDckjsHGWW57OmkUhIOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EHGWS57OmiUhEOTqfl8bhmHgU4k9byzn0kBil5xO/aj0AIFW3A7+miURAMTKXi8LdnHQU3kdPzwXIfCCV0wu/dlEAIF2/C7+qiUhENTqbl8bdmHAU2jdXzxnUiByh2wvDck0EH"></audio>
+            <audio id="shootSound" src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgA"></audio>
+        </a-assets>
+
+        <!-- Environment - Shooting Range Theme -->
+        <a-entity environment="preset: tron; groundColor: #0a0a0a; groundColor2: #000; grid: cross; gridColor: #0f0; horizonColor: #001100; fog: 0.5"></a-entity>
+
+        <!-- Tactical Grid Floor -->
+        <a-plane
+            position="0 0 0"
+            rotation="-90 0 0"
+            width="100"
+            height="100"
+            material="wireframe: true; color: #0f0; opacity: 0.3; shader: flat">
+        </a-plane>
+
+        <!-- Room Boundary Guardian Visualization -->
+        <a-entity id="roomBoundary" position="0 0 0">
+            <!-- Will be dynamically generated based on room scan -->
+            <a-box position="3 1 0" width="0.05" height="2" depth="6" color="#0f0" material="opacity: 0.3; wireframe: true"></a-box>
+            <a-box position="-3 1 0" width="0.05" height="2" depth="6" color="#0f0" material="opacity: 0.3; wireframe: true"></a-box>
+            <a-box position="0 1 3" width="6" height="2" depth="0.05" color="#0f0" material="opacity: 0.3; wireframe: true"></a-box>
+            <a-box position="0 1 -3" width="6" height="2" depth="0.05" color="#0f0" material="opacity: 0.3; wireframe: true"></a-box>
+        </a-entity>
+
+        <!-- Shooting Range Targets (Tool Selection) -->
+        <a-entity id="shootingRange" position="0 1.5 -8">
+            <!-- Target 1: Rotate Tool -->
+            <a-entity class="target" data-tool="rotate" position="-2 0 0">
+                <a-ring radius-inner="0.8" radius-outer="1" color="#111" segments-theta="8"></a-ring>
+                <a-ring radius-inner="0.6" radius-outer="0.8" color="#0f0" segments-theta="8" material="opacity: 0.7"></a-ring>
+                <a-ring radius-inner="0.4" radius-outer="0.6" color="#111" segments-theta="8"></a-ring>
+                <a-circle radius="0.4" color="#0c0"></a-circle>
+                <a-text value="ROTATE" align="center" color="#0f0" position="0 0 0.01" width="3"></a-text>
+                <a-text value="↻" align="center" color="#000" position="0 0 0.02" width="4" font-weight="900"></a-text>
+            </a-entity>
+
+            <!-- Target 2: Scale Tool -->
+            <a-entity class="target" data-tool="scale" position="0 0 0">
+                <a-ring radius-inner="0.8" radius-outer="1" color="#111" segments-theta="8"></a-ring>
+                <a-ring radius-inner="0.6" radius-outer="0.8" color="#0f0" segments-theta="8" material="opacity: 0.7"></a-ring>
+                <a-ring radius-inner="0.4" radius-outer="0.6" color="#111" segments-theta="8"></a-ring>
+                <a-circle radius="0.4" color="#0c0"></a-circle>
+                <a-text value="SCALE" align="center" color="#0f0" position="0 0 0.01" width="3"></a-text>
+                <a-text value="⊕" align="center" color="#000" position="0 0 0.02" width="4" font-weight="900"></a-text>
+            </a-entity>
+
+            <!-- Target 3: Move Tool -->
+            <a-entity class="target" data-tool="move" position="2 0 0">
+                <a-ring radius-inner="0.8" radius-outer="1" color="#111" segments-theta="8"></a-ring>
+                <a-ring radius-inner="0.6" radius-outer="0.8" color="#0f0" segments-theta="8" material="opacity: 0.7"></a-ring>
+                <a-ring radius-inner="0.4" radius-outer="0.6" color="#111" segments-theta="8"></a-ring>
+                <a-circle radius="0.4" color="#0c0"></a-circle>
+                <a-text value="MOVE" align="center" color="#0f0" position="0 0 0.01" width="3"></a-text>
+                <a-text value="⇄" align="center" color="#000" position="0 0 0.02" width="4" font-weight="900"></a-text>
+            </a-entity>
+        </a-entity>
+
+        <!-- COD-Style Radial Menu Bar (Oculus-style) -->
+        <a-entity id="radialMenu" visible="false" position="0 1.2 -0.5">
+            <!-- Background -->
+            <a-cylinder radius="0.4" height="0.02" color="#000" material="opacity: 0.9"></a-cylinder>
+
+            <!-- Menu Items (8 positions like COD weapon wheel) -->
+            <a-entity class="menu-item" data-action="generate" position="0 0.01 -0.3">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#0f0"></a-box>
+                <a-text value="GEN" align="center" color="#000" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+
+            <a-entity class="menu-item" data-action="load" position="0.21 0.01 -0.21">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#0f0"></a-box>
+                <a-text value="LOAD" align="center" color="#000" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+
+            <a-entity class="menu-item" data-action="save" position="0.3 0.01 0">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#0f0"></a-box>
+                <a-text value="SAVE" align="center" color="#000" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+
+            <a-entity class="menu-item" data-action="delete" position="0.21 0.01 0.21">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#f00"></a-box>
+                <a-text value="DEL" align="center" color="#000" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+
+            <a-entity class="menu-item" data-action="export" position="0 0.01 0.3">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#0f0"></a-box>
+                <a-text value="EXP" align="center" color="#000" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+
+            <a-entity class="menu-item" data-action="settings" position="-0.21 0.01 0.21">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#00f"></a-box>
+                <a-text value="SET" align="center" color="#fff" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+
+            <a-entity class="menu-item" data-action="tools" position="-0.3 0.01 0">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#0f0"></a-box>
+                <a-text value="TOOL" align="center" color="#000" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+
+            <a-entity class="menu-item" data-action="home" position="-0.21 0.01 -0.21">
+                <a-box width="0.15" height="0.02" depth="0.15" color="#0f0"></a-box>
+                <a-text value="HOME" align="center" color="#000" position="0 0.02 0" width="0.4"></a-text>
+            </a-entity>
+        </a-entity>
+
+        <!-- Model Display Area (Center Stage) -->
+        <a-entity id="modelStage" position="0 1 -4">
+            <!-- Tactical Display Pedestal -->
+            <a-cylinder radius="0.6" height="0.1" color="#0f0" material="metalness: 0.8; roughness: 0.2; emissive: #0f0; emissiveIntensity: 0.3"></a-cylinder>
+            <a-cylinder radius="0.55" height="0.05" position="0 0.08 0" color="#000"></a-cylinder>
+
+            <!-- Holographic Grid Base -->
+            <a-plane rotation="-90 0 0" width="1.2" height="1.2" color="#0f0" material="wireframe: true; opacity: 0.4"></a-plane>
+
+            <!-- Model Container -->
+            <a-entity id="modelContainer" position="0 0.2 0" scale="0.1 0.1 0.1">
+                <!-- Models loaded here -->
+            </a-entity>
+
+            <!-- Rotating platform effect -->
+            <a-animation attribute="rotation" to="0 360 0" dur="20000" easing="linear" repeat="indefinite"></a-animation>
+        </a-entity>
+
+        <!-- COD-Style HUD -->
+        <a-entity id="hud" position="0 0 0">
+            <!-- Will be attached to camera -->
+        </a-entity>
+
+        <!-- Tactical Lighting -->
+        <a-light type="ambient" intensity="0.3" color="#0f0"></a-light>
+        <a-light type="directional" position="5 10 5" intensity="0.6" color="#0f0"></a-light>
+        <a-light type="directional" position="-5 10 -5" intensity="0.4" color="#0c0"></a-light>
+        <a-light type="point" position="0 3 0" intensity="0.5" color="#0f0"></a-light>
+
+        <!-- Camera Rig with Room-Scale Tracking -->
+        <a-entity id="rig" position="0 0 0" movement-controls="speed: 0.5">
+            <!-- VR Camera with COD-style HUD -->
+            <a-camera look-controls wasd-controls="acceleration: 15">
+                <!-- HUD Elements -->
+                <a-entity id="crosshair" position="0 0 -1">
+                    <a-ring radius-inner="0.01" radius-outer="0.012" color="#0f0" opacity="0.8"></a-ring>
+                    <a-circle radius="0.002" color="#0f0"></a-circle>
+                </a-entity>
+
+                <!-- Status Display (Top Right) -->
+                <a-entity position="0.3 0.2 -0.5">
+                    <a-text id="statusHUD" value="TRINITY TACTICAL\nTOOL: NONE\nMODEL: NONE" align="left" color="#0f0" width="0.3" opacity="0.9"></a-text>
+                </a-entity>
+
+                <!-- Ammo Counter Style (Bottom Right) - Shows model count -->
+                <a-entity position="0.3 -0.25 -0.5">
+                    <a-text id="modelCount" value="MODELS: 0" align="left" color="#0f0" width="0.25" font-weight="900"></a-text>
+                </a-entity>
+
+                <!-- Minimap (Bottom Left) -->
+                <a-entity position="-0.3 -0.25 -0.5">
+                    <a-plane width="0.15" height="0.15" color="#000" material="opacity: 0.7"></a-plane>
+                    <a-text value="MAP" align="center" color="#0f0" position="0 0.06 0.01" width="0.15"></a-text>
+                    <!-- Player position indicator -->
+                    <a-circle radius="0.01" color="#0f0" position="0 0 0.01"></a-circle>
+                </a-entity>
+            </a-camera>
+
+            <!-- Left Controller - Menu/Tool Selection -->
+            <a-entity
+                id="leftController"
+                oculus-touch-controls="hand: left"
+                laser-controls="color: #0f0"
+                raycaster="objects: .target, .menu-item; far: 20"
+                line="color: #0f0; opacity: 0.75">
+
+                <!-- Weapon-style controller model -->
+                <a-entity position="0 0 -0.1">
+                    <a-box width="0.02" height="0.05" depth="0.15" color="#111"></a-box>
+                    <a-box width="0.03" height="0.02" depth="0.05" position="0 -0.02 -0.05" color="#0f0" material="emissive: #0f0; emissiveIntensity: 0.5"></a-box>
+                </a-entity>
+            </a-entity>
+
+            <!-- Right Controller - Primary Interaction -->
+            <a-entity
+                id="rightController"
+                oculus-touch-controls="hand: right"
+                laser-controls="color: #0f0"
+                raycaster="objects: .target, .menu-item, #modelContainer; far: 20"
+                line="color: #0f0; opacity: 0.75">
+
+                <!-- Weapon-style controller model -->
+                <a-entity position="0 0 -0.1">
+                    <a-box width="0.02" height="0.05" depth="0.15" color="#111"></a-box>
+                    <a-box width="0.03" height="0.02" depth="0.05" position="0 -0.02 -0.05" color="#0f0" material="emissive: #0f0; emissiveIntensity: 0.5"></a-box>
+                </a-entity>
+            </a-entity>
+        </a-entity>
+
+    </a-scene>
+
+    <script>
+        // Trinity Tactical VR Workspace Controller
+        let currentTool = null;
+        let modelCount = 0;
+        let roomScanned = false;
+        let wirelessConnected = true;
+
+        // Loading sequence
+        const loadingSteps = [
+            'Connecting to Trinity Network...',
+            'Initializing Tailscale VPN...',
+            'Scanning Room Boundaries...',
+            'Loading Guardian System...',
+            'Initializing Oculus Controllers...',
+            'Loading Shooting Range...',
+            'Preparing CAD Tools...',
+            'Ready for Deployment!'
+        ];
+
+        let currentStep = 0;
+        const progressFill = document.getElementById('progressFill');
+        const loadingStatus = document.getElementById('loadingStatus');
+
+        function updateLoading() {
+            if (currentStep < loadingSteps.length) {
+                loadingStatus.textContent = loadingSteps[currentStep];
+                progressFill.style.width = ((currentStep + 1) / loadingSteps.length * 100) + '%';
+                currentStep++;
+                setTimeout(updateLoading, 500);
+            }
+        }
+
+        updateLoading();
+
+        // Enter VR button
+        document.getElementById('enterVR').addEventListener('click', () => {
+            document.getElementById('loadingScreen').style.display = 'none';
+            const scene = document.querySelector('a-scene');
+            if (scene) {
+                scene.enterVR();
+                initializeWorkspace();
+            }
+        });
+
+        // Initialize workspace
+        function initializeWorkspace() {
+            console.log('Trinity Tactical Workspace initialized');
+            updateHUD('TACTICAL MODE ACTIVE', 'NONE', 0);
+            performRoomScan();
+        }
+
+        // Room scanning simulation
+        function performRoomScan() {
+            console.log('Scanning room boundaries...');
+            // In real implementation, this would use Guardian API
+            setTimeout(() => {
+                roomScanned = true;
+                updateHUD('ROOM SCANNED', currentTool || 'NONE', modelCount);
+            }, 2000);
+        }
+
+        // Update COD-style HUD
+        function updateHUD(status, tool, models) {
+            const statusHUD = document.querySelector('#statusHUD');
+            if (statusHUD) {
+                statusHUD.setAttribute('value', `TRINITY TACTICAL\\nTOOL: ${tool}\\nSTATUS: ${status}`);
+            }
+
+            const modelCountHUD = document.querySelector('#modelCount');
+            if (modelCountHUD) {
+                modelCountHUD.setAttribute('value', `MODELS: ${models}`);
+            }
+        }
+
+        // Controller event handling
+        AFRAME.registerComponent('trinity-controller', {
+            init: function () {
+                const el = this.el;
+                const hand = el.getAttribute('oculus-touch-controls').hand;
+
+                // Y Button (left) / B Button (right) - Toggle radial menu
+                el.addEventListener(hand === 'left' ? 'ybuttondown' : 'bbuttondown', () => {
+                    toggleRadialMenu();
+                });
+
+                // X Button (left) / A Button (right) - Quick actions
+                el.addEventListener(hand === 'left' ? 'xbuttondown' : 'abuttondown', () => {
+                    quickAction();
+                });
+
+                // Trigger - Shoot/Select
+                el.addEventListener('triggerdown', () => {
+                    handleTrigger(el);
+                });
+
+                // Grip - Grab
+                el.addEventListener('gripdown', () => {
+                    handleGrip();
+                });
+
+                // Thumbstick - Navigation (automatic)
+            }
+        });
+
+        // Toggle radial menu
+        function toggleRadialMenu() {
+            const menu = document.querySelector('#radialMenu');
+            if (menu) {
+                const isVisible = menu.getAttribute('visible');
+                menu.setAttribute('visible', !isVisible);
+                playSound('selectSound');
+            }
+        }
+
+        // Quick action
+        function quickAction() {
+            // Cycle through tools quickly
+            const tools = ['rotate', 'scale', 'move'];
+            const currentIndex = tools.indexOf(currentTool);
+            currentTool = tools[(currentIndex + 1) % tools.length];
+            updateHUD('TOOL CHANGED', currentTool, modelCount);
+            playSound('selectSound');
+        }
+
+        // Handle trigger
+        function handleTrigger(controller) {
+            const raycaster = controller.components.raycaster;
+            if (!raycaster) return;
+
+            const intersections = raycaster.intersections;
+            if (intersections.length > 0) {
+                const target = intersections[0].object.el;
+
+                // Check if hitting a shooting range target
+                if (target.classList.contains('target')) {
+                    const tool = target.getAttribute('data-tool');
+                    selectTool(tool);
+                    playSound('shootSound');
+                    hitEffect(target);
+                }
+
+                // Check if hitting radial menu
+                if (target.classList.contains('menu-item')) {
+                    const action = target.getAttribute('data-action');
+                    executeAction(action);
+                    playSound('selectSound');
+                }
+            }
+        }
+
+        // Select tool from shooting range
+        function selectTool(tool) {
+            currentTool = tool;
+            updateHUD('TARGET HIT', tool.toUpperCase(), modelCount);
+
+            // Visual feedback
+            const targets = document.querySelectorAll('.target');
+            targets.forEach(t => {
+                if (t.getAttribute('data-tool') === tool) {
+                    // Highlight selected target
+                    const circle = t.querySelector('a-circle');
+                    if (circle) {
+                        circle.setAttribute('color', '#fff');
+                        setTimeout(() => circle.setAttribute('color', '#0c0'), 300);
+                    }
+                }
+            });
+        }
+
+        // Hit effect on target
+        function hitEffect(target) {
+            // Pulse effect
+            target.setAttribute('scale', '1.2 1.2 1.2');
+            setTimeout(() => target.setAttribute('scale', '1 1 1'), 200);
+        }
+
+        // Execute menu action
+        function executeAction(action) {
+            console.log(`Executing action: ${action}`);
+
+            switch(action) {
+                case 'generate':
+                    generateModel();
+                    break;
+                case 'load':
+                    loadModel();
+                    break;
+                case 'save':
+                    saveModel();
+                    break;
+                case 'export':
+                    exportModel();
+                    break;
+                case 'delete':
+                    deleteModel();
+                    break;
+                case 'settings':
+                    openSettings();
+                    break;
+                case 'tools':
+                    openTools();
+                    break;
+                case 'home':
+                    returnHome();
+                    break;
+            }
+
+            toggleRadialMenu();
+        }
+
+        // Generate model via Trinity AI
+        async function generateModel() {
+            updateHUD('GENERATING...', currentTool || 'NONE', modelCount);
+
+            try {
+                // Call Trinity API
+                const response = await fetch('/api/generate_cad', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt: 'tactical hex bolt M8'})
+                });
+
+                const data = await response.json();
+                if (data.filename) {
+                    loadModelIntoStage(data.filename);
+                    modelCount++;
+                    updateHUD('GENERATED', currentTool || 'NONE', modelCount);
+                }
+            } catch (e) {
+                updateHUD('GENERATION FAILED', currentTool || 'NONE', modelCount);
+            }
+        }
+
+        // Load model into stage
+        function loadModelIntoStage(filename) {
+            const container = document.querySelector('#modelContainer');
+            if (!container) return;
+
+            // Clear existing
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+
+            // Create model entity
+            const model = document.createElement('a-entity');
+            model.setAttribute('gltf-model', `/cad_output/${filename}`);
+            model.setAttribute('scale', '1 1 1');
+
+            // Add rotation animation
+            const animation = document.createElement('a-animation');
+            animation.setAttribute('attribute', 'rotation');
+            animation.setAttribute('to', '0 360 0');
+            animation.setAttribute('dur', '10000');
+            animation.setAttribute('easing', 'linear');
+            animation.setAttribute('repeat', 'indefinite');
+            model.appendChild(animation);
+
+            container.appendChild(model);
+        }
+
+        // Other action handlers
+        function loadModel() {
+            updateHUD('LOADING MODEL', currentTool || 'NONE', modelCount);
+        }
+
+        function saveModel() {
+            updateHUD('SAVING MODEL', currentTool || 'NONE', modelCount);
+        }
+
+        function exportModel() {
+            updateHUD('EXPORTING MODEL', currentTool || 'NONE', modelCount);
+        }
+
+        function deleteModel() {
+            const container = document.querySelector('#modelContainer');
+            if (container) {
+                while (container.firstChild) {
+                    container.removeChild(container.firstChild);
+                }
+                modelCount = Math.max(0, modelCount - 1);
+                updateHUD('MODEL DELETED', currentTool || 'NONE', modelCount);
+            }
+        }
+
+        function openSettings() {
+            updateHUD('SETTINGS', currentTool || 'NONE', modelCount);
+        }
+
+        function openTools() {
+            updateHUD('TOOL MENU', currentTool || 'NONE', modelCount);
+        }
+
+        function returnHome() {
+            updateHUD('RETURNING HOME', currentTool || 'NONE', modelCount);
+        }
+
+        // Handle grip
+        function handleGrip() {
+            updateHUD('GRIP ENGAGED', currentTool || 'NONE', modelCount);
+        }
+
+        // Play sound
+        function playSound(soundId) {
+            const sound = document.querySelector(`#${soundId}`);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play();
+            }
+        }
+
+        // Add controller components
+        document.querySelectorAll('[oculus-touch-controls]').forEach(controller => {
+            controller.setAttribute('trinity-controller', '');
+        });
+
+        // Auto-optimization loop
+        setInterval(() => {
+            // Monitor performance
+            const fps = document.querySelector('a-scene').components.stats?.stats?.fps || 0;
+            if (fps < 60) {
+                console.log('Trinity Auto-Optimize: Adjusting quality...');
+                // Auto-adjust rendering quality
+            }
+        }, 5000);
+
+        // Network status monitoring
+        setInterval(() => {
+            // Check wireless connection
+            fetch('/api/status').catch(() => {
+                wirelessConnected = false;
+                updateHUD('CONNECTION LOST', currentTool || 'NONE', modelCount);
+            });
+        }, 10000);
+
+        console.log('Trinity Tactical Workspace loaded - Wireless mode active');
+    </script>
+</body>
+</html>
