@@ -146,7 +146,11 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         """Handle POST requests."""
+        global REQUEST_COUNT
+        REQUEST_COUNT += 1
+
         parsed_path = urlparse(self.path)
+        logger.info(f"POST {parsed_path.path} from {self.client_address[0]}")
 
         # Generate CAD model endpoint
         if parsed_path.path == '/api/generate_cad':
@@ -157,12 +161,15 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
                 data = json.loads(post_data.decode())
                 prompt = data.get('prompt', 'hex bolt')
 
+                logger.info(f"CAD generation requested: {prompt}")
+
                 # TODO: Integrate with Trinity CAD generation
                 # For now, return test model
                 response = {
                     'status': 'success',
                     'filename': 'test_bolt.stl',
-                    'message': f'Generating: {prompt}'
+                    'message': f'Generating: {prompt}',
+                    'timestamp': datetime.now().isoformat()
                 }
 
                 self.send_response(200)
@@ -172,6 +179,7 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps(response).encode())
 
             except Exception as e:
+                logger.error(f"CAD generation error: {str(e)}")
                 self.send_error(500, f'Error: {str(e)}')
 
             return
@@ -187,33 +195,66 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         """Custom logging."""
-        print(f"[Trinity VR] {self.address_string()} - {format % args}")
+        logger.debug(f"{self.address_string()} - {format % args}")
+
+
+def get_network_info():
+    """Get current network configuration."""
+    try:
+        # Get Tailscale IP
+        result = subprocess.run(['tailscale', 'ip', '-4'],
+                              capture_output=True, text=True, timeout=2)
+        tailscale_ip = result.stdout.strip() if result.returncode == 0 else "Not available"
+    except:
+        tailscale_ip = "Not available"
+
+    # Get local IP
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except:
+        local_ip = "Not available"
+
+    return tailscale_ip, local_ip
 
 
 def main():
     """Start Trinity VR Server."""
-    print("╔════════════════════════════════════════╗")
-    print("║    TRINITY VR WORKSPACE SERVER         ║")
-    print("╚════════════════════════════════════════╝")
-    print()
-    print(f"🥽 Oculus Quest 1 Engineering Workspace")
-    print(f"📡 Server starting on port {VR_PORT}...")
-    print()
-    print(f"🌐 VR Workspace: http://localhost:{VR_PORT}/vr")
-    print(f"📱 Quest Access: http://[MAC-IP]:{VR_PORT}/vr")
-    print()
-    print("📦 CAD Output Directory:", CAD_OUTPUT_DIR)
-    print("🔧 Status: Ready for VR")
-    print()
-    print("Press Ctrl+C to stop")
-    print("=" * 44)
+    logger.info("╔════════════════════════════════════════╗")
+    logger.info("║    TRINITY VR WORKSPACE SERVER         ║")
+    logger.info("╚════════════════════════════════════════╝")
+    logger.info("")
+    logger.info("🥽 Oculus Quest 1 Engineering Workspace")
+    logger.info(f"📡 Server starting on port {VR_PORT}...")
+
+    # Get network info
+    tailscale_ip, local_ip = get_network_info()
+
+    logger.info("")
+    logger.info("🌐 Access URLs:")
+    if tailscale_ip != "Not available":
+        logger.info(f"   Tailscale: http://{tailscale_ip}:{VR_PORT}/vr")
+    if local_ip != "Not available":
+        logger.info(f"   Local WiFi: http://{local_ip}:{VR_PORT}/vr")
+    logger.info(f"   Localhost: http://localhost:{VR_PORT}/vr")
+    logger.info("")
+    logger.info(f"📦 CAD Output Directory: {CAD_OUTPUT_DIR}")
+    logger.info(f"📝 Log Directory: {LOG_DIR}")
+    logger.info("🔧 Status: Ready for VR")
+    logger.info("")
+    logger.info("Press Ctrl+C to stop")
+    logger.info("=" * 44)
 
     server = HTTPServer(('0.0.0.0', VR_PORT), TrinityVRHandler)
 
     try:
+        logger.info("Server listening on 0.0.0.0:8503")
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n\n🛑 Trinity VR Server stopped")
+        logger.info("\n\n🛑 Trinity VR Server stopped")
         server.shutdown()
 
 

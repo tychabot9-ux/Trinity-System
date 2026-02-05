@@ -19,6 +19,7 @@ ENV/
 # Logs
 *.log
 trinity.log
+logs/
 
 # Job application data
 job_logs/
@@ -44,3 +45,9 @@ resume_vault/
 
 # Scratchpad
 scratchpad/
+
+# VR workspace
+vr_server.pid
+*.qr.png
+trinity_vr_qr*.png
+verify_firewall.sh
