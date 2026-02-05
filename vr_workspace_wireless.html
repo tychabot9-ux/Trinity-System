@@ -223,7 +223,7 @@
         </a-entity>
 
         <!-- Model Display Area (Center Stage) -->
-        <a-entity id="modelStage" position="0 1 -4">
+        <a-entity id="modelStage" position="0 1 -4" animation="property: rotation; to: 0 360 0; dur: 20000; loop: true; easing: linear">
             <!-- Tactical Display Pedestal -->
             <a-cylinder radius="0.6" height="0.1" color="#0f0" material="metalness: 0.8; roughness: 0.2; emissive: #0f0; emissiveIntensity: 0.3"></a-cylinder>
             <a-cylinder radius="0.55" height="0.05" position="0 0.08 0" color="#000"></a-cylinder>
@@ -235,9 +235,6 @@
             <a-entity id="modelContainer" position="0 0.2 0" scale="0.1 0.1 0.1">
                 <!-- Models loaded here -->
             </a-entity>
-
-            <!-- Rotating platform effect -->
-            <a-animation attribute="rotation" to="0 360 0" dur="20000" easing="linear" repeat="indefinite"></a-animation>
         </a-entity>
 
         <!-- COD-Style HUD -->
@@ -352,7 +349,12 @@
             document.getElementById('loadingScreen').style.display = 'none';
             const scene = document.querySelector('a-scene');
             if (scene) {
-                scene.enterVR();
+                // Use A-Frame's built-in enterXR method
+                if (scene.enterXR) {
+                    scene.enterXR();
+                } else if (scene.enterVR) {
+                    scene.enterVR();
+                }
                 initializeWorkspace();
             }
         });
@@ -378,7 +380,7 @@
         function updateHUD(status, tool, models) {
             const statusHUD = document.querySelector('#statusHUD');
             if (statusHUD) {
-                statusHUD.setAttribute('value', `TRINITY TACTICAL\\nTOOL: ${tool}\\nSTATUS: ${status}`);
+                statusHUD.setAttribute('value', `TRINITY TACTICAL\nTOOL: ${tool}\nSTATUS: ${status}`);
             }
 
             const modelCountHUD = document.querySelector('#modelCount');
@@ -528,21 +530,38 @@
             updateHUD('GENERATING...', currentTool || 'NONE', modelCount);
 
             try {
-                // Call Trinity API
+                // Call Trinity API with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
                 const response = await fetch('/api/generate_cad', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({prompt: 'tactical hex bolt M8'})
+                    body: JSON.stringify({prompt: 'tactical hex bolt M8'}),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
 
                 const data = await response.json();
                 if (data.filename) {
                     loadModelIntoStage(data.filename);
                     modelCount++;
                     updateHUD('GENERATED', currentTool || 'NONE', modelCount);
+                } else {
+                    throw new Error('No filename returned');
                 }
             } catch (e) {
-                updateHUD('GENERATION FAILED', currentTool || 'NONE', modelCount);
+                console.error('Generation error:', e);
+                if (e.name === 'AbortError') {
+                    updateHUD('TIMEOUT', currentTool || 'NONE', modelCount);
+                } else {
+                    updateHUD('GEN FAILED', currentTool || 'NONE', modelCount);
+                }
             }
         }
 
@@ -561,14 +580,8 @@
             model.setAttribute('gltf-model', `/cad_output/${filename}`);
             model.setAttribute('scale', '1 1 1');
 
-            // Add rotation animation
-            const animation = document.createElement('a-animation');
-            animation.setAttribute('attribute', 'rotation');
-            animation.setAttribute('to', '0 360 0');
-            animation.setAttribute('dur', '10000');
-            animation.setAttribute('easing', 'linear');
-            animation.setAttribute('repeat', 'indefinite');
-            model.appendChild(animation);
+            // Add rotation animation using modern syntax
+            model.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 10000; loop: true; easing: linear');
 
             container.appendChild(model);
         }
@@ -623,10 +636,22 @@
             }
         }
 
-        // Add controller components
-        document.querySelectorAll('[oculus-touch-controls]').forEach(controller => {
-            controller.setAttribute('trinity-controller', '');
-        });
+        // Add controller components after scene is loaded
+        const scene = document.querySelector('a-scene');
+        if (scene.hasLoaded) {
+            attachControllerComponents();
+        } else {
+            scene.addEventListener('loaded', () => {
+                attachControllerComponents();
+            });
+        }
+
+        function attachControllerComponents() {
+            document.querySelectorAll('[oculus-touch-controls]').forEach(controller => {
+                controller.setAttribute('trinity-controller', '');
+            });
+            console.log('Trinity controller components attached');
+        }
 
         // Auto-optimization loop
         setInterval(() => {
@@ -639,15 +664,138 @@
         }, 5000);
 
         // Network status monitoring
-        setInterval(() => {
-            // Check wireless connection
-            fetch('/api/status').catch(() => {
+        setInterval(async () => {
+            // Check wireless connection with timeout
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+                const response = await fetch('/api/status', {
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    wirelessConnected = true;
+                } else {
+                    throw new Error('Status check failed');
+                }
+            } catch (error) {
                 wirelessConnected = false;
                 updateHUD('CONNECTION LOST', currentTool || 'NONE', modelCount);
-            });
+                console.error('Network check failed:', error);
+            }
         }, 10000);
 
+        // ═══════════════════════════════════════════════════════
+        // CLIPBOARD SYNC - Mac ↔ Quest Universal Clipboard
+        // ═══════════════════════════════════════════════════════
+
+        let lastClipboardHash = '';
+
+        // Copy text to Mac clipboard
+        async function copyToMac(text) {
+            try {
+                // Limit clipboard size to 10MB
+                if (text.length > 10 * 1024 * 1024) {
+                    console.error('✗ Clipboard content too large (max 10MB)');
+                    updateHUD('CLIPBOARD TOO LARGE', currentTool || 'NONE', modelCount);
+                    return false;
+                }
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch('/api/clipboard', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: text}),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('✓ Copied to Mac:', result.chars, 'chars');
+                updateHUD('COPIED TO MAC', currentTool || 'NONE', modelCount);
+                return true;
+            } catch (error) {
+                console.error('✗ Copy failed:', error);
+                if (error.name === 'AbortError') {
+                    updateHUD('COPY TIMEOUT', currentTool || 'NONE', modelCount);
+                } else {
+                    updateHUD('COPY FAILED', currentTool || 'NONE', modelCount);
+                }
+                return false;
+            }
+        }
+
+        // Paste text from Mac clipboard
+        async function pasteFromMac() {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch('/api/clipboard', {
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('✓ Pasted from Mac:', data.content.length, 'chars');
+                return data.content;
+            } catch (error) {
+                console.error('✗ Paste failed:', error);
+                return '';
+            }
+        }
+
+        // Auto-sync clipboard from Mac (check every 3 seconds)
+        let autoSyncEnabled = true;
+        setInterval(async () => {
+            if (!autoSyncEnabled) return;
+
+            try {
+                const response = await fetch('/api/clipboard');
+                const data = await response.json();
+
+                // Update HUD subtitle with clipboard preview
+                if (data.hash !== lastClipboardHash) {
+                    lastClipboardHash = data.hash;
+                    const preview = data.content.substring(0, 30) + (data.content.length > 30 ? '...' : '');
+                    console.log('📋 Clipboard updated:', preview);
+                }
+            } catch (error) {
+                // Silent fail - don't spam console
+            }
+        }, 3000);
+
+        // Expose clipboard functions globally for VR UI testing
+        window.trinityClipboard = {
+            copy: copyToMac,
+            paste: pasteFromMac,
+            toggleAutoSync: () => { autoSyncEnabled = !autoSyncEnabled; },
+            // Test functions for Quest Browser console
+            testCopy: () => copyToMac('Test from Quest VR at ' + new Date().toLocaleTimeString()),
+            testPaste: async () => {
+                const content = await pasteFromMac();
+                console.log('Mac Clipboard:', content);
+                alert('Mac Clipboard:\\n' + content);
+            }
+        };
+
         console.log('Trinity Tactical Workspace loaded - Wireless mode active');
+        console.log('📋 Clipboard API: Use window.trinityClipboard.testCopy() or .testPaste()');
     </script>
 </body>
 </html>

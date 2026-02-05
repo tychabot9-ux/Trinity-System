@@ -17,11 +17,21 @@ import os
 import json
 import time
 import logging
+import hashlib
+import sys
 from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime
 import subprocess
+
+# Import Trinity Voice System
+try:
+    from trinity_voice import TrinityVoiceSystem
+    VOICE_ENABLED = True
+except ImportError:
+    VOICE_ENABLED = False
+    print("⚠️  Trinity Voice System not available")
 
 # Configuration
 VR_PORT = 8503
@@ -118,6 +128,28 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(models).encode())
             return
 
+        # Get clipboard content (Mac ↔ Quest sync)
+        elif parsed_path.path == '/api/clipboard':
+            try:
+                sync_file = Path.home() / '.trinity_clipboard'
+                if sync_file.exists():
+                    with open(sync_file, 'r') as f:
+                        clipboard_data = json.load(f)
+                else:
+                    clipboard_data = {'content': '', 'source': 'none', 'timestamp': ''}
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(clipboard_data).encode())
+                logger.info(f"Clipboard read: {len(clipboard_data.get('content', ''))} chars")
+                return
+            except Exception as e:
+                logger.error(f"Clipboard read error: {str(e)}")
+                self.send_error(500, f'Clipboard read error: {str(e)}')
+                return
+
         # Default file serving
         else:
             # Add CORS headers for cross-origin requests
@@ -184,6 +216,112 @@ class TrinityVRHandler(SimpleHTTPRequestHandler):
 
             return
 
+        # Set clipboard content (Quest → Mac sync)
+        elif parsed_path.path == '/api/clipboard':
+            content_length = int(self.headers['Content-Length'])
+
+            # Limit clipboard size to 10MB
+            MAX_CLIPBOARD_SIZE = 10 * 1024 * 1024
+            if content_length > MAX_CLIPBOARD_SIZE:
+                self.send_error(413, f'Clipboard content too large (max {MAX_CLIPBOARD_SIZE // 1024 // 1024}MB)')
+                return
+
+            post_data = self.rfile.read(content_length)
+
+            try:
+                data = json.loads(post_data.decode())
+                clipboard_content = data.get('content', '')
+
+                # Additional size check on content
+                if len(clipboard_content) > MAX_CLIPBOARD_SIZE:
+                    self.send_error(413, f'Clipboard content too large (max {MAX_CLIPBOARD_SIZE // 1024 // 1024}MB)')
+                    return
+
+                # Write to sync file
+                sync_file = Path.home() / '.trinity_clipboard'
+                clipboard_data = {
+                    'content': clipboard_content,
+                    'source': 'quest',
+                    'timestamp': datetime.now().isoformat(),
+                    'hash': hashlib.md5(clipboard_content.encode()).hexdigest()
+                }
+
+                with open(sync_file, 'w') as f:
+                    json.dump(clipboard_data, f)
+
+                logger.info(f"Clipboard written: {len(clipboard_content)} chars from Quest")
+
+                response = {
+                    'status': 'success',
+                    'message': 'Clipboard synced to Mac',
+                    'chars': len(clipboard_content),
+                    'timestamp': clipboard_data['timestamp']
+                }
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode())
+
+            except Exception as e:
+                logger.error(f"Clipboard write error: {str(e)}")
+                self.send_error(500, f'Clipboard write error: {str(e)}')
+
+            return
+
+        # Trinity Voice System endpoint
+        elif parsed_path.path == '/api/speak':
+            if not VOICE_ENABLED:
+                self.send_error(503, 'Voice system not available')
+                return
+
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+
+            try:
+                data = json.loads(post_data.decode())
+                text = data.get('text', '')
+                action = data.get('action', None)
+
+                if not text and not action:
+                    self.send_error(400, 'Missing text or action parameter')
+                    return
+
+                # Get voice system instance
+                voice = globals().get('TRINITY_VOICE')
+                if not voice:
+                    self.send_error(500, 'Voice system not initialized')
+                    return
+
+                # Announce action or speak text
+                if action:
+                    detail = data.get('detail', '')
+                    voice.announce_action(action, detail)
+                else:
+                    voice.speak(text)
+
+                response = {
+                    'status': 'success',
+                    'message': 'Voice output sent',
+                    'text': text or action,
+                    'timestamp': datetime.now().isoformat()
+                }
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode())
+
+                logger.info(f"Voice: {text or action}")
+
+            except Exception as e:
+                logger.error(f"Voice API error: {str(e)}")
+                self.send_error(500, f'Voice error: {str(e)}')
+
+            return
+
         self.send_error(404, 'Endpoint not found')
 
     def end_headers(self):
@@ -243,6 +381,22 @@ def main():
     logger.info("")
     logger.info(f"📦 CAD Output Directory: {CAD_OUTPUT_DIR}")
     logger.info(f"📝 Log Directory: {LOG_DIR}")
+
+    # Initialize Trinity Voice System
+    if VOICE_ENABLED:
+        try:
+            global TRINITY_VOICE
+            TRINITY_VOICE = TrinityVoiceSystem()
+            logger.info("🔊 Voice System: Enabled (AVA)")
+            # Announce startup
+            TRINITY_VOICE.announce_action('vr_connected')
+        except Exception as e:
+            logger.warning(f"Voice system init failed: {e}")
+            TRINITY_VOICE = None
+    else:
+        TRINITY_VOICE = None
+        logger.info("🔇 Voice System: Disabled")
+
     logger.info("🔧 Status: Ready for VR")
     logger.info("")
     logger.info("Press Ctrl+C to stop")

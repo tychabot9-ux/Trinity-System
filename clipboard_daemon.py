@@ -17,6 +17,7 @@ from datetime import datetime
 SYNC_FILE = Path.home() / ".trinity_clipboard"
 CHECK_INTERVAL = 1  # Check every second
 LOG_FILE = Path("/tmp/trinity_clipboard.log")
+MAX_CLIPBOARD_SIZE = 10 * 1024 * 1024  # 10MB limit
 
 def log(message):
     """Log message with timestamp."""
@@ -88,23 +89,33 @@ def main():
 
             # If Mac clipboard changed, update sync file
             if mac_hash != last_mac_hash and mac_hash != sync_hash and mac_content:
-                sync_data = {
-                    'content': mac_content,
-                    'source': 'mac',
-                    'timestamp': datetime.now().isoformat(),
-                    'hash': mac_hash
-                }
-                if write_sync_file(sync_data):
-                    log(f"Mac → Sync: {len(mac_content)} chars")
-                    last_mac_hash = mac_hash
+                # Check size limit
+                if len(mac_content) > MAX_CLIPBOARD_SIZE:
+                    log(f"Mac clipboard too large: {len(mac_content)} bytes (max {MAX_CLIPBOARD_SIZE})")
+                    last_mac_hash = mac_hash  # Skip this content
+                else:
+                    sync_data = {
+                        'content': mac_content,
+                        'source': 'mac',
+                        'timestamp': datetime.now().isoformat(),
+                        'hash': mac_hash
+                    }
+                    if write_sync_file(sync_data):
+                        log(f"Mac → Sync: {len(mac_content)} chars")
+                        last_mac_hash = mac_hash
 
             # If sync file changed (from Quest), update Mac clipboard
             elif sync_hash != last_sync_hash and sync_hash != mac_hash and sync_content:
                 if sync_data.get('source') != 'mac':  # Don't copy back our own changes
-                    if set_mac_clipboard(sync_content):
-                        log(f"Sync → Mac: {len(sync_content)} chars")
-                        last_sync_hash = sync_hash
-                        last_mac_hash = sync_hash
+                    # Check size limit
+                    if len(sync_content) > MAX_CLIPBOARD_SIZE:
+                        log(f"Sync content too large: {len(sync_content)} bytes (max {MAX_CLIPBOARD_SIZE})")
+                        last_sync_hash = sync_hash  # Skip this content
+                    else:
+                        if set_mac_clipboard(sync_content):
+                            log(f"Sync → Mac: {len(sync_content)} chars")
+                            last_sync_hash = sync_hash
+                            last_mac_hash = sync_hash
 
             time.sleep(CHECK_INTERVAL)
 
