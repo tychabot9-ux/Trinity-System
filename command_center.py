@@ -12,6 +12,7 @@ Modules:
   🧠 Memory Dashboard - View profile, preferences & insights
   🤖 AI Assistant - Chat with Trinity AI (files, voice, images)
   📊 Trading Station - Bot monitoring & performance
+  💼 Business Station - Autonomous income operations
 
 Access Points:
   Desktop: http://localhost:8001/command
@@ -1167,6 +1168,203 @@ def render_ai_assistant_station():
     with col3:
         st.caption(f"💬 {len(st.session_state.chat_history)} messages")
 
+def render_business_station():
+    """Render the Autonomous Business Dashboard."""
+    st.header("💼 Autonomous Business Operations")
+
+    st.info("**Trinity Autonomous Income System** - Ethical, legal, fully automated revenue generation")
+
+    # Create business database if it doesn't exist
+    business_db = BASE_DIR / "business_data" / "autonomous_business.db"
+    business_db.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        conn = sqlite3.connect(business_db)
+        c = conn.cursor()
+
+        # Create tables if they don't exist
+        c.execute('''CREATE TABLE IF NOT EXISTS earnings
+                    (date TEXT, source TEXT, amount REAL, description TEXT,
+                     PRIMARY KEY (date, source, description))''')
+
+        c.execute('''CREATE TABLE IF NOT EXISTS opportunities
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                     date_added TEXT, platform TEXT, title TEXT, pay REAL,
+                     estimated_hours REAL, capability_match REAL, profitability REAL,
+                     risk_level TEXT, status TEXT, notes TEXT)''')
+
+        c.execute('''CREATE TABLE IF NOT EXISTS costs
+                    (date TEXT PRIMARY KEY, electricity REAL, internet REAL,
+                     api_costs REAL, taxes REAL, total REAL)''')
+
+        conn.commit()
+
+        # Calculate totals
+        c.execute("SELECT SUM(amount) FROM earnings WHERE date LIKE ?", (datetime.now().strftime('%Y-%m') + '%',))
+        monthly_total = c.fetchone()[0] or 0.0
+
+        c.execute("SELECT SUM(amount) FROM earnings WHERE date >= ?",
+                 ((datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d'),))
+        quarterly_total = c.fetchone()[0] or 0.0
+
+        c.execute("SELECT SUM(amount) FROM earnings")
+        retirement_fund = c.fetchone()[0] or 0.0
+
+        # Dashboard metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("💰 Monthly Income", f"${monthly_total:,.2f}")
+        with col2:
+            st.metric("📈 Quarterly Total", f"${quarterly_total:,.2f}")
+        with col3:
+            progress = (retirement_fund / 250000.0) * 100
+            st.metric("🎯 Retirement Fund", f"${retirement_fund:,.2f}",
+                     f"{progress:.1f}% to $250k goal")
+
+        st.divider()
+
+        # Income Streams Status
+        st.subheader("📊 Active Income Streams")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+            **Pillar 1: API Marketplace** ⚙️
+            - Status: Ready to deploy
+            - Setup time: 2-3 days
+            - Potential: $500-5,000/mo passive
+
+            **Pillar 2: SaaS Products** 💻
+            - Status: Ready to build
+            - Setup time: 1-2 weeks per product
+            - Potential: $1,000-10,000/mo passive
+            """)
+
+        with col2:
+            st.markdown("""
+            **Pillar 3: Job Opportunities** 🎯
+            - Status: Framework ready
+            - Setup time: 1-2 days
+            - Potential: $2,000-8,000/mo active
+
+            **Pillar 4: Open Source** ⭐
+            - Status: Ready to publish
+            - Setup time: 1 week
+            - Potential: $200-3,000/mo passive
+            """)
+
+        st.divider()
+
+        # Opportunity Queue
+        st.subheader("🔍 Opportunity Queue")
+
+        c.execute("SELECT COUNT(*) FROM opportunities WHERE status = 'pending'")
+        pending_count = c.fetchone()[0] or 0
+
+        if pending_count > 0:
+            st.info(f"**{pending_count} opportunities** awaiting review")
+
+            # Show opportunities
+            c.execute("""SELECT id, platform, title, pay, estimated_hours,
+                        capability_match, profitability, risk_level
+                        FROM opportunities WHERE status = 'pending'
+                        ORDER BY profitability DESC LIMIT 5""")
+            opportunities = c.fetchall()
+
+            for opp in opportunities:
+                opp_id, platform, title, pay, hours, match, profit, risk = opp
+
+                with st.expander(f"💼 {title} - ${pay:,.0f}"):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Platform", platform)
+                        st.metric("Pay", f"${pay:,.0f}")
+                    with col2:
+                        st.metric("Est. Hours", f"{hours:.1f}h")
+                        st.metric("Match", f"{match:.0%}")
+                    with col3:
+                        st.metric("Profitability", f"${profit:,.0f}")
+                        st.metric("Risk", risk)
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        if st.button("✅ Accept", key=f"accept_{opp_id}"):
+                            c.execute("UPDATE opportunities SET status = 'accepted' WHERE id = ?", (opp_id,))
+                            conn.commit()
+                            st.success("Opportunity accepted!")
+                            st.rerun()
+                    with col2:
+                        if st.button("❌ Decline", key=f"decline_{opp_id}"):
+                            c.execute("UPDATE opportunities SET status = 'declined' WHERE id = ?", (opp_id,))
+                            conn.commit()
+                            st.info("Opportunity declined")
+                            st.rerun()
+                    with col3:
+                        if st.button("📝 Review Later", key=f"later_{opp_id}"):
+                            st.info("Will review later")
+        else:
+            st.info("No pending opportunities. Autonomous monitoring active.")
+
+        st.divider()
+
+        # Recent Activity
+        st.subheader("📋 Recent Activity")
+
+        c.execute("""SELECT date, source, amount, description
+                    FROM earnings ORDER BY date DESC LIMIT 10""")
+        recent_earnings = c.fetchall()
+
+        if recent_earnings:
+            for date, source, amount, desc in recent_earnings:
+                col1, col2, col3 = st.columns([2, 2, 3])
+                with col1:
+                    st.caption(date[:16])
+                with col2:
+                    st.caption(source)
+                with col3:
+                    st.caption(f"**${amount:.2f}** - {desc}")
+        else:
+            st.caption("No earnings yet. Deploy income streams to start tracking.")
+
+        st.divider()
+
+        # Quick Actions
+        st.subheader("⚡ Quick Actions")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if st.button("📄 View Business Model", use_container_width=True):
+                try:
+                    with open(BASE_DIR / "AUTONOMOUS_BUSINESS_MODEL.md", 'r') as f:
+                        st.text_area("Autonomous Business Model", f.read(), height=400)
+                except:
+                    st.error("Business model document not found")
+
+        with col2:
+            if st.button("📊 Export Earnings", use_container_width=True):
+                c.execute("SELECT * FROM earnings")
+                earnings_data = c.fetchall()
+                st.json({"earnings": [{"date": e[0], "source": e[1], "amount": e[2], "description": e[3]}
+                                     for e in earnings_data]})
+
+        with col3:
+            if st.button("➕ Add Test Earning", use_container_width=True):
+                # Add a test earning
+                test_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                c.execute("INSERT OR IGNORE INTO earnings VALUES (?, ?, ?, ?)",
+                         (test_date, "API Sale", 29.00, "Monthly subscription"))
+                conn.commit()
+                st.success("Test earning added!")
+                st.rerun()
+
+        conn.close()
+
+    except Exception as e:
+        st.error(f"⚠️ Business dashboard error: {str(e)}")
+        st.info("Business database will be initialized on first use.")
+
 def render_trading_station():
     """Render the Trading Bot monitoring module."""
     st.header("📊 Trading Station")
@@ -1334,7 +1532,7 @@ def render_header():
     """, unsafe_allow_html=True)
 
     st.title("🎯 TRINITY COMMAND CENTER")
-    st.caption("Unified AI Workstation • Career • Engineering • Trading")
+    st.caption("Unified AI Workstation • Career • Engineering • Business • Trading")
 
 def render_sidebar():
     """Render the sidebar with module selection and settings."""
@@ -1359,8 +1557,8 @@ def render_sidebar():
         st.subheader("Stations")
         module = st.radio(
             "Select Module:",
-            ["Career", "Engineering", "Memory", "AI Assistant", "Trading"],
-            index=["Career", "Engineering", "Memory", "AI Assistant", "Trading"].index(st.session_state.active_module),
+            ["Career", "Engineering", "Memory", "AI Assistant", "Trading", "Business"],
+            index=["Career", "Engineering", "Memory", "AI Assistant", "Trading", "Business"].index(st.session_state.active_module),
             label_visibility="collapsed"
         )
 
@@ -1437,6 +1635,8 @@ def main():
         render_ai_assistant_station()
     elif st.session_state.active_module == "Trading":
         render_trading_station()
+    elif st.session_state.active_module == "Business":
+        render_business_station()
 
     # Footer
     st.divider()
