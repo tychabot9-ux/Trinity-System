@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+    <meta name="apple-mobile-web-app-title" content="Trinity VR">
+    <link rel="manifest" href="/manifest.json">
+    <title>Trinity VR - Home</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Orbitron', 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #0f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #0f0;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .subtitle {
+            font-size: 18px;
+            margin-bottom: 40px;
+            color: #0c0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 20px 40px;
+            margin: 10px;
+            background: #0f0;
+            color: #000;
+            text-decoration: none;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            transition: all 0.3s;
+            border: 2px solid #0f0;
+        }
+        .btn:hover {
+            background: #000;
+            color: #0f0;
+            box-shadow: 0 0 50px rgba(0, 255, 0, 0.8);
+            transform: scale(1.05);
+        }
+        .status {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .online {
+            color: #0f0;
+        }
+        .info {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #0c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>╔═══════════════════════╗<br>║ TRINITY VR SYSTEM ║<br>╚═══════════════════════╝</h1>
+        <div class="subtitle">🥽 Oculus Quest Engineering Workspace</div>
+
+        <a href="/vr" class="btn">🎮 ENTER VR WORKSPACE</a>
+
+        <div class="status">
+            <h3 style="margin-bottom: 15px;">SYSTEM STATUS</h3>
+            <div class="status-item">
+                <span>VR Server:</span>
+                <span class="online" id="serverStatus">CHECKING...</span>
+            </div>
+            <div class="status-item">
+                <span>Voice System:</span>
+                <span class="online">ENABLED</span>
+            </div>
+            <div class="status-item">
+                <span>Clipboard Sync:</span>
+                <span class="online">ACTIVE</span>
+            </div>
+            <div class="status-item">
+                <span>Network:</span>
+                <span class="online" id="networkStatus">CONNECTED</span>
+            </div>
+        </div>
+
+        <div class="info">
+            <p>📱 To add to home screen:</p>
+            <p>Quest Browser: Menu (⋮) → Add to Home Screen</p>
+            <p style="margin-top: 10px;">🔊 Voice feedback enabled</p>
+            <p>📋 Universal clipboard sync active</p>
+        </div>
+    </div>
+
+    <script>
+        // Check server status
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('serverStatus').textContent = 'ONLINE';
+                    document.getElementById('networkStatus').textContent =
+                        `CONNECTED (${data.uptime_human})`;
+
+                    // Announce ready
+                    await fetch('/api/speak', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            text: 'Trinity VR system ready. Select enter VR workspace.'
+                        })
+                    });
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').textContent = 'OFFLINE';
+                document.getElementById('networkStatus').textContent = 'DISCONNECTED';
+            }
+        }
+
+        // Run status check
+        checkStatus();
+
+        // Refresh status every 10 seconds
+        setInterval(checkStatus, 10000);
+    </script>
+</body>
+</html>

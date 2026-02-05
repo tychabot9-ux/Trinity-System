@@ -490,6 +490,20 @@ def render_engineering_station():
     """Render the CAD/Engineering module."""
     st.header("🔧 Engineering Station")
 
+    # VR Workspace Quick Access
+    st.info("🥽 **VR Workspace Available** - Access wireless VR engineering environment")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.link_button("🎮 Open VR Workspace", "http://localhost:8503", use_container_width=True, type="primary")
+    with col2:
+        st.markdown("""
+        **Quest Access URLs:**
+        - Tailscale: `100.66.103.8:8503`
+        - Local WiFi: `192.168.1.216:8503`
+        """)
+
+    st.divider()
+
     vr_mode = is_vr_mode()
     if vr_mode:
         st.info("🥽 VR Mode Active - Models will be simplified for Quest 1")
