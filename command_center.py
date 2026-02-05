@@ -34,6 +34,12 @@ import streamlit as st
 import requests
 from dotenv import load_dotenv
 
+# Trinity Memory imports
+try:
+    from trinity_memory import get_memory, MEMORY_DB
+except ImportError:
+    MEMORY_DB = Path(__file__).parent / "data" / "trinity_memory.db"
+
 # Load environment
 load_dotenv()
 
@@ -50,7 +56,7 @@ GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # File paths
-JOB_STATUS_DB = BASE_DIR / "job_status.db"
+JOB_STATUS_DB = BASE_DIR / "job_logs" / "job_status.db"  # Fixed: matches job_status.py
 DRAFT_DIR = BASE_DIR / "email_drafts"
 CAD_OUTPUT_DIR = BASE_DIR / "cad_output"
 CAD_PREVIEWS_DIR = CAD_OUTPUT_DIR / "previews"
@@ -61,9 +67,13 @@ GENESIS_LOG = BOT_FACTORY_DIR / "mark_xi_genesis.log"
 MACRO_STATUS = BOT_FACTORY_DIR / "macro_status.json"
 
 # Ensure directories exist
-CAD_OUTPUT_DIR.mkdir(exist_ok=True)
-CAD_PREVIEWS_DIR.mkdir(exist_ok=True)
-DRAFT_DIR.mkdir(exist_ok=True)
+try:
+    JOB_STATUS_DB.parent.mkdir(parents=True, exist_ok=True)
+    CAD_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    CAD_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
+    DRAFT_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create directories: {e}")
 
 # ============================================================================
 # SESSION STATE INITIALIZATION
@@ -92,6 +102,13 @@ def _initialize_trinity_memory():
     try:
         from trinity_memory import get_memory
         memory = get_memory()
+
+        # Verify memory system is working
+        try:
+            test_profile = memory.get_profile('system_initialized')
+        except Exception as e:
+            print(f"Warning: Trinity Memory database error: {e}")
+            return
 
         # Check if profile exists
         existing_profile = memory.get_profile('name')
@@ -168,9 +185,50 @@ def get_display_config() -> Dict:
 # JOB HUNTING MODULE
 # ============================================================================
 
+def init_job_status_db():
+    """Initialize job status database if it doesn't exist."""
+    try:
+        JOB_STATUS_DB.parent.mkdir(parents=True, exist_ok=True)
+
+        conn = sqlite3.connect(JOB_STATUS_DB)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS job_statuses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                draft_filename TEXT UNIQUE,
+                company TEXT NOT NULL,
+                position TEXT NOT NULL,
+                fit_score INTEGER,
+                status TEXT DEFAULT 'pending',
+                contact_email TEXT,
+                contact_name TEXT,
+                contact_phone TEXT,
+                job_url TEXT,
+                source TEXT,
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                applied_date TIMESTAMP,
+                response_date TIMESTAMP,
+                notes TEXT
+            )
+        """)
+
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_status ON job_statuses(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_company ON job_statuses(company)")
+
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Warning: Could not initialize job status database: {e}")
+        return False
+
 def get_job_statistics() -> Dict:
     """Get job application statistics from database."""
     try:
+        # Ensure database is initialized
+        init_job_status_db()
+
         conn = sqlite3.connect(JOB_STATUS_DB)
         cursor = conn.cursor()
 
@@ -190,6 +248,7 @@ def get_job_statistics() -> Dict:
             'total': sum(status_counts.values())
         }
     except Exception as e:
+        print(f"Error getting job statistics: {e}")
         return {
             'pending': 0,
             'applied': 0,
@@ -202,6 +261,9 @@ def get_job_statistics() -> Dict:
 def get_recent_jobs(limit: int = 10) -> List[Dict]:
     """Get recent job applications."""
     try:
+        # Ensure database is initialized
+        init_job_status_db()
+
         conn = sqlite3.connect(JOB_STATUS_DB)
         cursor = conn.cursor()
 
@@ -226,6 +288,7 @@ def get_recent_jobs(limit: int = 10) -> List[Dict]:
         conn.close()
         return jobs
     except Exception as e:
+        print(f"Error getting recent jobs: {e}")
         return []
 
 def submit_job_url(url: str) -> Dict:
@@ -307,8 +370,12 @@ def render_career_station():
                     draft_path = DRAFT_DIR / job['draft_filename']
                     if draft_path.exists():
                         if st.button(f"📄 View Draft", key=f"draft_{job['draft_filename']}"):
-                            with open(draft_path) as f:
-                                st.text_area("Cover Letter", f.read(), height=300)
+                            try:
+                                with open(draft_path, 'r', encoding='utf-8') as f:
+                                    content = f.read()
+                                    st.text_area("Cover Letter", content, height=300)
+                            except Exception as e:
+                                st.error(f"Error reading draft: {str(e)}")
     else:
         st.info("No jobs yet. Submit a job URL above to get started!")
 
@@ -322,13 +389,20 @@ def render_career_station():
 
 def generate_scad_code(prompt: str, vr_mode: bool = False) -> str:
     """Generate OpenSCAD code using AI."""
-    import google.generativeai as genai
+    try:
+        import google.generativeai as genai
+    except ImportError:
+        return "// Error: google-generativeai package not installed. Install with: pip install google-generativeai"
 
     if not GEMINI_API_KEY:
         return "// Error: GEMINI_API_KEY not set"
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-pro')
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        # Use gemini-1.5-pro for better results (gemini-pro is deprecated)
+        model = genai.GenerativeModel('gemini-1.5-pro')
+    except Exception as e:
+        return f"// Error configuring Gemini API: {str(e)}"
 
     system_prompt = f"""You are an OpenSCAD code generator. Generate clean, well-commented OpenSCAD code.
 
@@ -363,20 +437,35 @@ Generate ONLY the OpenSCAD code, no explanations before or after."""
 
 def compile_scad_to_stl(scad_code: str, output_name: str, timeout: int = 60) -> Tuple[bool, str, Optional[Path]]:
     """Compile OpenSCAD code to STL file."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_name = f"{timestamp}_{output_name}"
+    try:
+        # Ensure output directory exists
+        CAD_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    scad_path = CAD_OUTPUT_DIR / f"{base_name}.scad"
-    stl_path = CAD_OUTPUT_DIR / f"{base_name}.stl"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Sanitize output name to prevent path traversal
+        safe_output_name = "".join(c for c in output_name if c.isalnum() or c in ('_', '-'))
+        base_name = f"{timestamp}_{safe_output_name}"
 
-    # Write SCAD file
-    with open(scad_path, 'w') as f:
-        f.write(scad_code)
+        scad_path = CAD_OUTPUT_DIR / f"{base_name}.scad"
+        stl_path = CAD_OUTPUT_DIR / f"{base_name}.stl"
 
-    # Check if openscad is installed
-    openscad_path = subprocess.run(['which', 'openscad'], capture_output=True, text=True).stdout.strip()
-    if not openscad_path:
-        return False, "OpenSCAD not installed. Run: brew install --cask openscad", None
+        # Write SCAD file
+        try:
+            with open(scad_path, 'w') as f:
+                f.write(scad_code)
+        except Exception as e:
+            return False, f"Error writing SCAD file: {str(e)}", None
+
+        # Check if openscad is installed
+        try:
+            openscad_path = subprocess.run(['which', 'openscad'], capture_output=True, text=True, timeout=5).stdout.strip()
+        except subprocess.TimeoutExpired:
+            return False, "Timeout checking for OpenSCAD installation", None
+
+        if not openscad_path:
+            return False, "OpenSCAD not installed. Run: brew install --cask openscad", None
+    except Exception as e:
+        return False, f"Initialization error: {str(e)}", None
 
     # Compile to STL
     try:
@@ -500,9 +589,12 @@ def render_engineering_station():
                             )
 
                 # Show code preview
-                with open(scad_file) as f:
-                    code_preview = f.read()[:500]
-                    st.code(code_preview + "..." if len(code_preview) >= 500 else code_preview, language='openscad')
+                try:
+                    with open(scad_file, 'r', encoding='utf-8') as f:
+                        code_preview = f.read()[:500]
+                        st.code(code_preview + "..." if len(code_preview) >= 500 else code_preview, language='openscad')
+                except Exception as e:
+                    st.caption(f"Could not preview: {str(e)}")
     else:
         st.info("No models yet. Generate your first model above!")
 
@@ -527,8 +619,11 @@ def get_bot_status(pid: int) -> Dict:
 def get_phoenix_stats() -> Dict:
     """Get Phoenix trading bot statistics."""
     try:
+        if not BOT_FACTORY_DIR.exists():
+            return {'error': f'Bot-Factory directory not found at {BOT_FACTORY_DIR}'}
+
         if not PHOENIX_LOG.exists():
-            return {'error': 'Log file not found'}
+            return {'error': 'Log file not found', 'path': str(PHOENIX_LOG)}
 
         # Read last 100 lines
         with open(PHOENIX_LOG) as f:
@@ -554,12 +649,16 @@ def get_phoenix_stats() -> Dict:
                     break
 
         # Get process status
-        phoenix_pids = subprocess.run(
-            ['pgrep', '-f', 'mark_xii_phoenix.py'],
-            capture_output=True, text=True
-        ).stdout.strip().split('\n')
+        try:
+            phoenix_pids = subprocess.run(
+                ['pgrep', '-f', 'mark_xii_phoenix.py'],
+                capture_output=True, text=True, timeout=5
+            ).stdout.strip().split('\n')
 
-        running = any(pid.strip().isdigit() for pid in phoenix_pids if pid.strip())
+            running = any(pid.strip().isdigit() for pid in phoenix_pids if pid.strip())
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+            print(f"Warning: Could not check Phoenix process status: {e}")
+            running = False
 
         return {
             'running': running,
@@ -575,16 +674,23 @@ def get_phoenix_stats() -> Dict:
 def get_genesis_stats() -> Dict:
     """Get Genesis trading bot statistics."""
     try:
+        if not BOT_FACTORY_DIR.exists():
+            return {'error': f'Bot-Factory directory not found at {BOT_FACTORY_DIR}'}
+
         if not GENESIS_LOG.exists():
-            return {'error': 'Log file not found'}
+            return {'error': 'Log file not found', 'path': str(GENESIS_LOG)}
 
         # Get process status
-        genesis_pids = subprocess.run(
-            ['pgrep', '-f', 'mark_xi_genesis.py'],
-            capture_output=True, text=True
-        ).stdout.strip().split('\n')
+        try:
+            genesis_pids = subprocess.run(
+                ['pgrep', '-f', 'mark_xi_genesis.py'],
+                capture_output=True, text=True, timeout=5
+            ).stdout.strip().split('\n')
 
-        running = any(pid.strip().isdigit() for pid in genesis_pids if pid.strip())
+            running = any(pid.strip().isdigit() for pid in genesis_pids if pid.strip())
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+            print(f"Warning: Could not check Genesis process status: {e}")
+            running = False
 
         # Read last few lines for status
         with open(GENESIS_LOG) as f:
@@ -612,8 +718,11 @@ def get_genesis_stats() -> Dict:
 def get_macro_status_data() -> Dict:
     """Get macro trading status."""
     try:
+        if not BOT_FACTORY_DIR.exists():
+            return {'error': f'Bot-Factory directory not found at {BOT_FACTORY_DIR}', 'current_action': 'UNKNOWN'}
+
         if not MACRO_STATUS.exists():
-            return {'current_action': 'UNKNOWN', 'trading_enabled': None}
+            return {'current_action': 'UNKNOWN', 'trading_enabled': None, 'error': 'macro_status.json not found'}
 
         with open(MACRO_STATUS) as f:
             data = json.load(f)
@@ -642,11 +751,8 @@ def process_ai_message(user_message: str, uploaded_files: list = None) -> str:
 
         genai.configure(api_key=GEMINI_API_KEY)
 
-        # Use gemini-pro-vision for files, gemini-pro for text only
-        if uploaded_files:
-            model = genai.GenerativeModel('gemini-1.5-pro')
-        else:
-            model = genai.GenerativeModel('gemini-1.5-pro')
+        # Use gemini-1.5-pro for all cases (supports vision, text, and files)
+        model = genai.GenerativeModel('gemini-1.5-pro')
 
         # Get Trinity Memory for enhanced context
         memory = get_memory()
@@ -702,19 +808,35 @@ INSTRUCTIONS:
         if uploaded_files:
             for file in uploaded_files:
                 try:
-                    if file.type.startswith('image/'):
+                    # Check file size to prevent memory issues (max 10MB per file)
+                    file.seek(0, 2)  # Seek to end
+                    file_size = file.tell()
+                    file.seek(0)  # Seek back to start
+
+                    if file_size > 10 * 1024 * 1024:  # 10MB
+                        conversation_parts.append(f"[File too large: {file.name}, {file_size / 1024 / 1024:.1f}MB - skipped]")
+                        continue
+
+                    if file.type and file.type.startswith('image/'):
                         # Handle image files
-                        import PIL.Image
-                        image = PIL.Image.open(file)
-                        conversation_parts.append(image)
-                        conversation_parts.append(f"[Image: {file.name}]")
+                        try:
+                            import PIL.Image
+                            image = PIL.Image.open(file)
+                            conversation_parts.append(image)
+                            conversation_parts.append(f"[Image: {file.name}]")
+                        except Exception as e:
+                            conversation_parts.append(f"[Error loading image {file.name}: {str(e)}]")
                     else:
                         # Handle text-based files
                         content = file.read()
                         try:
                             text_content = content.decode('utf-8')
-                            conversation_parts.append(f"[File: {file.name}]\n{text_content[:10000]}")
-                        except:
+                            # Limit content to 10,000 characters to prevent token overflow
+                            if len(text_content) > 10000:
+                                conversation_parts.append(f"[File: {file.name} (truncated)]\n{text_content[:10000]}\n... [file truncated]")
+                            else:
+                                conversation_parts.append(f"[File: {file.name}]\n{text_content}")
+                        except UnicodeDecodeError:
                             conversation_parts.append(f"[Binary file: {file.name}, {len(content)} bytes]")
                 except Exception as e:
                     conversation_parts.append(f"[Error reading {file.name}: {str(e)}]")
@@ -1101,12 +1223,15 @@ def render_trading_station():
 
     with col1:
         if st.button("📈 View Trading Log", width='stretch'):
-            if PHOENIX_LOG.exists():
-                with open(PHOENIX_LOG) as f:
-                    log_content = f.readlines()[-50:]
-                st.text_area("Phoenix Mark XII Genesis V2 Log (Last 50 lines)", "".join(log_content), height=400)
-            else:
-                st.error("Log file not found")
+            try:
+                if PHOENIX_LOG.exists():
+                    with open(PHOENIX_LOG, 'r', encoding='utf-8', errors='ignore') as f:
+                        log_content = f.readlines()[-50:]
+                    st.text_area("Phoenix Mark XII Genesis V2 Log (Last 50 lines)", "".join(log_content), height=400)
+                else:
+                    st.error(f"Log file not found at {PHOENIX_LOG}")
+            except Exception as e:
+                st.error(f"Error reading log file: {str(e)}")
 
     with col2:
         if st.button("🔄 Refresh Status", width='stretch'):
@@ -1119,8 +1244,14 @@ def render_trading_station():
         st.caption("📁 Bot-Factory Directory")
     with col2:
         if st.button("🤖 Open", key="open_bot_factory", width='stretch'):
-            subprocess.run(["open", str(BOT_FACTORY_DIR)])
-            st.success("Opening Bot-Factory...")
+            try:
+                if BOT_FACTORY_DIR.exists():
+                    subprocess.run(["open", str(BOT_FACTORY_DIR)], timeout=5)
+                    st.success("Opening Bot-Factory...")
+                else:
+                    st.error(f"Bot-Factory directory not found at {BOT_FACTORY_DIR}")
+            except Exception as e:
+                st.error(f"Could not open Bot-Factory: {str(e)}")
 
 # ============================================================================
 # MAIN COMMAND CENTER INTERFACE
@@ -1224,8 +1355,15 @@ def render_sidebar():
         st.subheader("System Status")
 
         # Check if services are running (by port, not process name)
-        trinity_running = subprocess.run(['lsof', '-i', ':8001'], capture_output=True).returncode == 0
-        phoenix_running = subprocess.run(['pgrep', '-f', 'mark_xii_phoenix'], capture_output=True).returncode == 0
+        try:
+            trinity_running = subprocess.run(['lsof', '-i', ':8001'], capture_output=True, timeout=5).returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            trinity_running = False
+
+        try:
+            phoenix_running = subprocess.run(['pgrep', '-f', 'mark_xii_phoenix'], capture_output=True, timeout=5).returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            phoenix_running = False
 
         st.write("🎯 Trinity API:", "🟢" if trinity_running else "🔴")
         st.write("🏆 Phoenix Mark XII Genesis V2:", "🟢" if phoenix_running else "🔴")

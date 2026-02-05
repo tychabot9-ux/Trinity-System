@@ -69,10 +69,16 @@ class TrinityMemory:
 
     def _initialize_database(self):
         """Create database schema for Trinity memory storage."""
-        self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
+        try:
+            # Ensure parent directory exists
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        cursor = self.conn.cursor()
+            self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+            self.conn.row_factory = sqlite3.Row
+
+            cursor = self.conn.cursor()
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize Trinity Memory database: {e}")
 
         # User profile table
         cursor.execute("""
@@ -430,43 +436,41 @@ class TrinityMemory:
 
     def get_knowledge(self, topic: str = None, limit: int = 100) -> List[Dict]:
         """Retrieve knowledge entries."""
-        cursor = self.conn.cursor()
-        if topic:
-            cursor.execute("""
-                SELECT * FROM knowledge
-                WHERE topic LIKE ?
-                ORDER BY relevance_score DESC, accessed_count DESC
-                LIMIT ?
-            """, (f'%{topic}%', limit))
-        else:
-            cursor.execute("""
-                SELECT * FROM knowledge
-                ORDER BY relevance_score DESC
-                LIMIT ?
-            """, (limit,))
+        try:
+            cursor = self.conn.cursor()
 
-        # Update access tracking
-        for row in cursor.fetchall():
-            cursor.execute("""
-                UPDATE knowledge
-                SET accessed_count = accessed_count + 1,
-                    last_accessed = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (row['id'],))
-        self.conn.commit()
+            # First, get the knowledge entries
+            if topic:
+                cursor.execute("""
+                    SELECT * FROM knowledge
+                    WHERE topic LIKE ?
+                    ORDER BY relevance_score DESC, accessed_count DESC
+                    LIMIT ?
+                """, (f'%{topic}%', limit))
+            else:
+                cursor.execute("""
+                    SELECT * FROM knowledge
+                    ORDER BY relevance_score DESC
+                    LIMIT ?
+                """, (limit,))
 
-        cursor.execute("""
-            SELECT * FROM knowledge
-            WHERE topic LIKE ?
-            ORDER BY relevance_score DESC
-            LIMIT ?
-        """ if topic else """
-            SELECT * FROM knowledge
-            ORDER BY relevance_score DESC
-            LIMIT ?
-        """, (f'%{topic}%', limit) if topic else (limit,))
+            rows = cursor.fetchall()
 
-        return [dict(row) for row in cursor.fetchall()]
+            # Update access tracking for retrieved rows
+            for row in rows:
+                cursor.execute("""
+                    UPDATE knowledge
+                    SET accessed_count = accessed_count + 1,
+                        last_accessed = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (row['id'],))
+
+            self.conn.commit()
+
+            return [dict(row) for row in rows]
+        except Exception as e:
+            print(f"Error retrieving knowledge: {e}")
+            return []
 
     # ========================================================================
     # ANALYTICS & SUMMARY
