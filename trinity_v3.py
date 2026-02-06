@@ -78,10 +78,17 @@ APPLE_STYLE = """
         --apple-border: #38383a;
     }
     
-    /* Global Styles */
+    /* Global Styles - Optimized for TV Display */
     .main {
         background-color: var(--apple-bg);
         color: var(--apple-text);
+        font-size: 0.9rem;
+    }
+
+    /* Base text size reduction */
+    body, p, div, span {
+        font-size: 0.9rem;
+        line-height: 1.4;
     }
     
     /* Cards with frosted glass effect */
@@ -99,16 +106,16 @@ APPLE_STYLE = """
         box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     }
     
-    /* Buttons - Apple style */
+    /* Buttons - Apple style, reduced for TV */
     .stButton > button {
         background: var(--apple-primary);
         color: white;
         border: none;
         border-radius: 12px;
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1.2rem;
         font-weight: 500;
         transition: all 0.2s ease;
-        font-size: 1rem;
+        font-size: 0.85rem;
     }
     
     .stButton > button:hover {
@@ -117,28 +124,32 @@ APPLE_STYLE = """
         box-shadow: 0 4px 12px rgba(10,132,255,0.3);
     }
     
-    /* Metrics - Large, bold numbers */
+    /* Metrics - Reduced for TV display */
     [data-testid="stMetricValue"] {
-        font-size: 2.5rem;
+        font-size: 1.5rem;
         font-weight: 700;
         color: var(--apple-primary);
     }
-    
+
     [data-testid="stMetricDelta"] {
-        font-size: 0.875rem;
+        font-size: 0.75rem;
         font-weight: 500;
     }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem;
+    }
     
-    /* Headers */
+    /* Headers - Reduced for TV display */
     h1, h2, h3 {
         color: var(--apple-text);
         font-weight: 700;
         letter-spacing: -0.02em;
     }
-    
-    h1 { font-size: 2.5rem; }
-    h2 { font-size: 2rem; }
-    h3 { font-size: 1.5rem; }
+
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
@@ -279,8 +290,9 @@ APPLE_STYLE = """
         background: transparent;
         border: none;
         color: var(--apple-text-secondary);
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1rem;
         font-weight: 500;
+        font-size: 0.85rem;
         transition: all 0.2s ease;
     }
     
@@ -726,16 +738,22 @@ def render_financial_hub():
         ]
         
         for year, start, contrib, end, signals in flywheel_data:
-            with st.expander(f"**{year}**"):
-                col1, col2, col3, col4 = st.columns(4)
+            trading_gain = end - start - contrib
+            gain_pct = (trading_gain / (start + contrib / 2)) * 100 if (start + contrib / 2) > 0 else 0
+
+            with st.expander(f"**{year}** → ${end:,}"):
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Start", f"${start:,}")
+                    st.metric("Start Capital", f"${start:,}")
+                    st.metric("+ Contributions", f"${contrib:,}", help="Savings + Signal Revenue")
                 with col2:
-                    st.metric("Contributions", f"${contrib:,}")
+                    st.metric("= Total Invested", f"${start + contrib:,}")
+                    st.metric("+ Trading Gains", f"${trading_gain:,}", delta=f"{gain_pct:.1f}% return")
                 with col3:
-                    st.metric("End Balance", f"${end:,}")
-                with col4:
-                    st.metric("Signal Revenue", f"${signals:,}")
+                    st.metric("= End Balance", f"${end:,}")
+                    st.metric("Signal Revenue", f"${signals:,}", help="Annual signal selling income")
+
+                st.caption(f"💡 Math: ${start:,} start + ${contrib:,} added + ${trading_gain:,} gains = ${end:,} end")
         
         st.success("**Conservative Result:** $2.97M net worth by 2036")
     
