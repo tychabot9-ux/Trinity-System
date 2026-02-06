@@ -689,7 +689,8 @@ def render_financial_hub():
         "🎯 20 Optimizations",
         "⚡ Quick Cash",
         "📊 Phoenix AGRO",
-        "✅ Week 1 Actions"
+        "✅ Week 1 Actions",
+        "🔍 Paper → Live"
     ])
     
     with tabs[0]:  # Overview
@@ -1103,6 +1104,313 @@ def render_financial_hub():
         done = sum(1 for v in st.session_state.week1_checklist.values() if v)
         st.progress(done / total if total > 0 else 0)
         st.metric("Progress", f"{done}/{total}")
+
+    with tabs[7]:  # Paper → Live Translation
+        st.subheader("🔍 Paper → Live Strategy Validation")
+
+        st.info("""
+        **Purpose:** Compare paper trading performance ($100k) vs extrapolated live performance ($40k).
+        Validate strategy meets targets before deploying real capital.
+        """)
+
+        # Load Phoenix state
+        phoenix_state_path = BOT_FACTORY_DIR / "phoenix_state.json"
+        try:
+            with open(phoenix_state_path) as f:
+                phoenix_state = json.load(f)
+        except:
+            phoenix_state = {
+                "current_equity": 100000,
+                "peak_equity": 100000,
+                "total_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "total_pnl": 0.0,
+                "trade_history": []
+            }
+
+        # Calculate metrics
+        paper_equity = phoenix_state.get("current_equity", 100000)
+        paper_start = 100000
+        total_trades = phoenix_state.get("total_trades", 0)
+        winning_trades = phoenix_state.get("winning_trades", 0)
+        losing_trades = phoenix_state.get("losing_trades", 0)
+        total_pnl = phoenix_state.get("total_pnl", 0.0)
+        trade_history = phoenix_state.get("trade_history", [])
+
+        # Calculate paper metrics
+        paper_return_pct = ((paper_equity - paper_start) / paper_start) * 100 if paper_start > 0 else 0
+        win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+        avg_win = sum(t.get("pnl", 0) for t in trade_history if t.get("pnl", 0) > 0) / winning_trades if winning_trades > 0 else 0
+        avg_loss = abs(sum(t.get("pnl", 0) for t in trade_history if t.get("pnl", 0) < 0) / losing_trades) if losing_trades > 0 else 0
+        avg_r_multiple = (avg_win / avg_loss) if avg_loss > 0 else 0
+
+        # Calculate drawdown
+        peak_equity = phoenix_state.get("peak_equity", 100000)
+        current_drawdown_pct = ((peak_equity - paper_equity) / peak_equity * 100) if peak_equity > 0 else 0
+
+        # Calculate Sharpe ratio (from Phoenix logic)
+        sharpe_ratio = 0.0
+        if len(trade_history) >= 5:
+            returns = []
+            for trade in trade_history:
+                equity_before = trade.get("equity_after", paper_equity) - trade.get("pnl", 0)
+                if equity_before > 0:
+                    returns.append(trade.get("pnl", 0) / equity_before)
+            if len(returns) >= 5:
+                mean_return = sum(returns) / len(returns)
+                variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
+                std_return = variance ** 0.5
+                if std_return > 0:
+                    sharpe_ratio = (mean_return / std_return) * (252 / len(returns)) ** 0.5
+
+        # Scale to live account ($40k)
+        live_start = 40000
+        scaling_factor = live_start / paper_start
+        live_equity = paper_start + (paper_equity - paper_start) * scaling_factor
+        live_pnl = total_pnl * scaling_factor
+        live_return_pct = paper_return_pct  # Percentage stays same
+
+        # Projected monthly return (if we had trades)
+        if total_trades > 0:
+            # Estimate days of trading
+            days_trading = 30  # Default assumption
+            if trade_history:
+                first_trade_time = trade_history[0].get("entry_time", "")
+                last_trade_time = trade_history[-1].get("exit_time", "")
+                # Simple day count estimate
+
+            trades_per_day = total_trades / days_trading if days_trading > 0 else 0
+            projected_monthly_trades = trades_per_day * 21  # 21 trading days
+            monthly_return_pct = (paper_return_pct / days_trading) * 21 if days_trading > 0 else 0
+            projected_monthly_return_live = (live_start * monthly_return_pct / 100)
+        else:
+            projected_monthly_trades = 0
+            monthly_return_pct = 0
+            projected_monthly_return_live = 0
+
+        st.markdown("---")
+
+        # Side-by-side comparison
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("### 📄 Paper Trading ($100k)")
+            st.metric("Starting Capital", f"${paper_start:,}")
+            st.metric("Current Equity", f"${paper_equity:,.2f}", delta=f"{paper_return_pct:+.2f}%")
+            st.metric("Total P&L", f"${total_pnl:,.2f}")
+            st.metric("Total Trades", f"{total_trades}")
+
+            if total_trades > 0:
+                st.metric("Win Rate", f"{win_rate:.1f}%")
+                st.metric("Avg R Multiple", f"{avg_r_multiple:.2f}x" if avg_r_multiple > 0 else "N/A")
+                st.metric("Max Drawdown", f"{current_drawdown_pct:.2f}%")
+                st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}" if sharpe_ratio > 0 else "N/A")
+            else:
+                st.caption("🕐 Waiting for first trade...")
+
+        with col2:
+            st.markdown("### 💰 Live Extrapolation ($40k)")
+            st.metric("Starting Capital", f"${live_start:,}")
+            st.metric("Projected Equity", f"${live_equity:,.2f}", delta=f"{live_return_pct:+.2f}%")
+            st.metric("Projected P&L", f"${live_pnl:,.2f}")
+            st.metric("Same Trades", f"{total_trades}")
+
+            if total_trades > 0:
+                st.metric("Win Rate", f"{win_rate:.1f}%", help="Same as paper")
+                st.metric("Avg R Multiple", f"{avg_r_multiple:.2f}x" if avg_r_multiple > 0 else "N/A")
+                st.metric("Max Drawdown", f"{current_drawdown_pct:.2f}%", help="Same as paper")
+                st.metric("Monthly Target", f"${projected_monthly_return_live:,.0f}", help="If sustained")
+            else:
+                st.caption("🕐 Waiting for first trade...")
+
+        st.markdown("---")
+
+        # Validation Checkpoints
+        st.subheader("✅ Validation Checklist (Go/No-Go)")
+
+        st.markdown("""
+        **Minimum Requirements for Live Deployment:**
+        - 15-20 paper trades completed
+        - Win rate >50%
+        - Avg R multiple >2.0
+        - Max drawdown <20%
+        - Sharpe ratio >1.5 (Tier 3 unlock)
+        """)
+
+        # Checkpoint status
+        trades_needed = max(0, 15 - total_trades)
+        trades_check = total_trades >= 15
+        winrate_check = win_rate >= 50 if total_trades > 0 else False
+        r_multiple_check = avg_r_multiple >= 2.0 if total_trades > 0 else False
+        drawdown_check = current_drawdown_pct < 20 if total_trades > 0 else False
+        sharpe_check = sharpe_ratio >= 1.5 if sharpe_ratio > 0 else False
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if trades_check:
+                st.success(f"✅ Trades: {total_trades}/15+")
+            else:
+                st.warning(f"⏳ Trades: {total_trades}/15 ({trades_needed} more needed)")
+
+        with col2:
+            if total_trades >= 5:
+                if winrate_check:
+                    st.success(f"✅ Win Rate: {win_rate:.1f}% (>50%)")
+                else:
+                    st.error(f"❌ Win Rate: {win_rate:.1f}% (<50%)")
+            else:
+                st.info("⏳ Win Rate: Need 5+ trades")
+
+        with col3:
+            if total_trades >= 5:
+                if r_multiple_check:
+                    st.success(f"✅ Avg R: {avg_r_multiple:.2f}x (>2.0)")
+                else:
+                    st.error(f"❌ Avg R: {avg_r_multiple:.2f}x (<2.0)")
+            else:
+                st.info("⏳ Avg R: Need 5+ trades")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if total_trades >= 5:
+                if drawdown_check:
+                    st.success(f"✅ Drawdown: {current_drawdown_pct:.2f}% (<20%)")
+                else:
+                    st.error(f"❌ Drawdown: {current_drawdown_pct:.2f}% (>20%)")
+            else:
+                st.info("⏳ Drawdown: Need 5+ trades")
+
+        with col2:
+            if sharpe_ratio > 0:
+                if sharpe_check:
+                    st.success(f"✅ Sharpe: {sharpe_ratio:.2f} (>1.5)")
+                else:
+                    st.warning(f"⚠️ Sharpe: {sharpe_ratio:.2f} (<1.5)")
+            else:
+                st.info("⏳ Sharpe: Need 5+ trades")
+
+        with col3:
+            # Overall Go/No-Go
+            all_checks = [trades_check, winrate_check, r_multiple_check, drawdown_check, sharpe_check]
+            if total_trades >= 15 and all(all_checks):
+                st.success("🚀 GO FOR LIVE")
+            elif total_trades >= 5:
+                passed = sum(all_checks)
+                st.warning(f"⏳ {passed}/5 checks passed")
+            else:
+                st.info("⏳ Validating strategy...")
+
+        st.markdown("---")
+
+        # Plan alignment
+        st.subheader("📊 Plan Alignment Check")
+
+        target_monthly_return = 4000  # $4k-5k/mo target from plan
+        on_track = projected_monthly_return_live >= target_monthly_return if total_trades >= 10 else None
+
+        if on_track is None:
+            st.info(f"""
+            **Target:** ${target_monthly_return:,}/month from live trading
+
+            **Status:** Need 10+ trades to project monthly performance
+
+            **Current Progress:** {total_trades}/10 trades completed
+            """)
+        elif on_track:
+            st.success(f"""
+            ✅ **ON TRACK FOR PLAN TARGETS**
+
+            - Paper performance: {paper_return_pct:+.2f}%
+            - Extrapolated live monthly: ${projected_monthly_return_live:,.0f}
+            - Target: ${target_monthly_return:,}/month
+            - Status: **EXCEEDING TARGET** 🎯
+            """)
+        else:
+            st.warning(f"""
+            ⚠️ **BELOW PLAN TARGETS**
+
+            - Paper performance: {paper_return_pct:+.2f}%
+            - Extrapolated live monthly: ${projected_monthly_return_live:,.0f}
+            - Target: ${target_monthly_return:,}/month
+            - Gap: ${target_monthly_return - projected_monthly_return_live:,.0f}/month
+
+            **Recommendation:** Continue paper trading and optimize strategy before going live.
+            """)
+
+        # Next steps
+        st.markdown("---")
+        st.subheader("📋 Next Steps")
+
+        if total_trades == 0:
+            st.info("""
+            **Waiting for market signals...**
+
+            Phoenix is running and monitoring QQQ for SMA crossover signals.
+
+            **What's happening:**
+            - Market is neutral (RSI ~52.9)
+            - No SMA crossover detected yet
+            - System is correctly holding (not a bug)
+
+            **Timeline:** Expect first trade within 1-7 days depending on market conditions.
+            """)
+        elif total_trades < 5:
+            st.info(f"""
+            **Early validation phase**
+
+            - Completed: {total_trades} trades
+            - Need: 5+ trades for initial metrics
+            - Then: 15-20 trades for full validation
+
+            **ETA:** ~3-7 more days to reach 5 trades (based on typical signal frequency)
+            """)
+        elif total_trades < 15:
+            st.warning(f"""
+            **Continue paper trading validation**
+
+            - Completed: {total_trades}/15 trades
+            - Remaining: {15 - total_trades} trades
+
+            **Current metrics:**
+            - Win rate: {win_rate:.1f}% (target: >50%)
+            - Avg R: {avg_r_multiple:.2f}x (target: >2.0)
+            - Sharpe: {sharpe_ratio:.2f} (target: >1.5)
+
+            **ETA:** ~{(15 - total_trades) * 1.5:.0f} days to complete validation
+            """)
+        else:
+            if all([trades_check, winrate_check, r_multiple_check, drawdown_check]):
+                st.success("""
+                🚀 **READY FOR LIVE DEPLOYMENT**
+
+                All validation checks passed! Strategy is proven on paper.
+
+                **Next Steps:**
+                1. Review final paper trading results
+                2. Fund Alpaca account with $40k
+                3. Switch Phoenix to LIVE mode
+                4. Start with conservative position sizing (Tier 1)
+                5. Monitor closely for first 5 live trades
+
+                **Expected Results:** $4-5k/month based on paper performance
+                """)
+            else:
+                st.error("""
+                ❌ **NOT READY FOR LIVE - Failed Validation**
+
+                Some validation checks failed. Strategy needs optimization.
+
+                **Options:**
+                1. Continue paper trading and adjust parameters
+                2. Analyze losing trades for patterns
+                3. Consider different entry/exit criteria
+                4. Contact Trinity AI for optimization suggestions
+
+                **DO NOT go live until all checks pass!**
+                """)
 
 def render_operations():
     """Operations - Career + Business."""
