@@ -1165,10 +1165,29 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded"
     )
-    
+
     # Apply Apple styling
     st.markdown(APPLE_STYLE, unsafe_allow_html=True)
-    
+
+    # Auto-refresh for autonomous updates (every 60 seconds)
+    # Reloads page automatically to show new data from Trinity Auto-Sync
+    st.markdown("""
+        <meta http-equiv="refresh" content="60">
+        <script>
+            // Store last interaction time to avoid disruptive refreshes
+            let lastInteraction = Date.now();
+            document.addEventListener('click', () => lastInteraction = Date.now());
+            document.addEventListener('keypress', () => lastInteraction = Date.now());
+
+            // Only refresh if no interaction in last 30 seconds
+            setInterval(() => {
+                if (Date.now() - lastInteraction > 30000) {
+                    location.reload();
+                }
+            }, 60000);
+        </script>
+    """, unsafe_allow_html=True)
+
     # Initialize
     init_session()
     
