@@ -1,58 +1,28 @@
 #!/bin/bash
-# Trinity Command Center - Unified Launch Script
+# Trinity Command Center v2.0 Launcher
+# Enhanced with optimizations, financial projections, and Claude Code integration
 
-set -e  # Exit on error
+echo "🎯 Launching Trinity Command Center v2.0..."
 
-echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║         TRINITY COMMAND CENTER - LAUNCH SEQUENCE               ║"
-echo "╚════════════════════════════════════════════════════════════════╝"
-echo ""
-
-# Change to Trinity directory
+# Navigate to Trinity System directory
 cd "$(dirname "$0")"
 
-# Check if dependencies are installed
-echo "🔍 Checking dependencies..."
-
-# Check Python packages
-if ! python3 -c "import streamlit" 2>/dev/null; then
-    echo "❌ Streamlit not found. Installing dependencies..."
-    pip3 install -r requirements_command_center.txt
-else
-    echo "✅ Python dependencies OK"
+# Activate virtual environment if it exists
+if [ -d "venv" ]; then
+    echo "📦 Activating virtual environment..."
+    source venv/bin/activate
 fi
 
-# Check OpenSCAD
-if ! command -v openscad &> /dev/null; then
-    echo "⚠️  OpenSCAD not found. Installing..."
-    echo "   Running: brew install --cask openscad"
-    brew install --cask openscad
-else
-    echo "✅ OpenSCAD installed"
+# Check if required packages are installed
+python3 -c "import streamlit" 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "⚠️  Streamlit not found. Installing..."
+    pip3 install streamlit
 fi
 
-echo ""
-echo "🚀 Starting Trinity Command Center..."
-echo ""
+# Launch Command Center v2
+echo "🚀 Starting Command Center..."
+streamlit run command_center_v2.py --server.port 8001 --server.address localhost
 
-# Set environment
-export TRINITY_API_BASE="http://localhost:8001"
-
-# Check if Trinity API is already running
-if lsof -Pi :8001 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-    echo "✅ Trinity API already running on port 8001"
-    echo ""
-    echo "🎯 Launching Command Center in standalone mode..."
-    echo "   Access at: http://localhost:8502"
-    echo ""
-    streamlit run command_center.py \
-        --server.port=8502 \
-        --server.address=0.0.0.0 \
-        --theme.base=dark \
-        --theme.primaryColor="#00FF00" \
-        --theme.backgroundColor="#0E1117"
-else
-    echo "⚠️  Trinity API not running. Starting integrated mode..."
-    echo ""
-    python3 trinity_command_mount.py
-fi
+# Keep script running
+wait
