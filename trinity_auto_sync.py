@@ -267,8 +267,8 @@ class TrinityAI:
     def __init__(self):
         if GEMINI_API_KEY:
             genai.configure(api_key=GEMINI_API_KEY)
-            # Use stable Gemini 1.5 Flash model
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            # Use stable Gemini Pro model
+            self.model = genai.GenerativeModel('gemini-pro')
         else:
             self.model = None
             log.warning("Gemini API key not found")
@@ -297,8 +297,11 @@ Be concise and actionable.
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
-            log.error(f"Trinity AI error: {e}")
-            return f"Analysis error: {str(e)}"
+            # Log only once, don't spam
+            if not hasattr(self, '_ai_error_logged'):
+                log.warning(f"Trinity AI unavailable: {str(e)[:100]}")
+                self._ai_error_logged = True
+            return "Trinity AI temporarily unavailable"
 
     def generate_daily_summary(self, data: Dict) -> str:
         """Generate daily summary report."""
