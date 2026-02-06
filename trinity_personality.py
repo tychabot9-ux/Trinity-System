@@ -120,105 +120,44 @@ Respond as Trinity - professional, strategic, with personality.
         return f"Trinity AI error: {str(e)}"
 
 def get_trinity_avatar() -> str:
-    """Return Trinity avatar SVG (Cortana's exact design - blue holographic circle)."""
+    """Return Trinity avatar SVG (EVE from Wall-E inspired - sleek AI companion)."""
     return """
     <svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
         <defs>
-            <!-- Cortana's signature blue glow -->
-            <radialGradient id="cortanaGlow" cx="50%" cy="50%">
+            <linearGradient id="eveBody" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#e8f4f8;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#c8d8e0;stop-opacity:1" />
+            </linearGradient>
+            <radialGradient id="eyeGlow" cx="50%" cy="50%">
                 <stop offset="0%" style="stop-color:#4dd9ff;stop-opacity:1" />
-                <stop offset="50%" style="stop-color:#0084ff;stop-opacity:0.8" />
-                <stop offset="100%" style="stop-color:#0052cc;stop-opacity:0.4" />
+                <stop offset="100%" style="stop-color:#0084ff;stop-opacity:0.6" />
             </radialGradient>
-            <filter id="cortanaBlur">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
-            </filter>
-            <filter id="cortanaGlowEffect">
-                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-                <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-            </filter>
         </defs>
 
-        <!-- Outer rotating ring (like Cortana's halo) -->
-        <circle cx="40" cy="40" r="35" fill="none" stroke="#0084ff"
-                stroke-width="1.5" opacity="0.3" stroke-dasharray="5,5" filter="url(#cortanaGlowEffect)">
-            <animateTransform attributeName="transform" type="rotate"
-                            from="0 40 40" to="360 40 40" dur="8s" repeatCount="indefinite"/>
+        <!-- EVE's sleek egg-shaped body -->
+        <ellipse cx="40" cy="45" rx="20" ry="28" fill="url(#eveBody)" stroke="#b0c0c8" stroke-width="1.5">
+            <animate attributeName="ry" values="28;29;28" dur="3s" repeatCount="indefinite"/>
+        </ellipse>
+
+        <!-- Left eye -->
+        <ellipse cx="32" cy="40" rx="6" ry="8" fill="url(#eyeGlow)">
+            <animate attributeName="opacity" values="1;0.7;1" dur="2s" repeatCount="indefinite"/>
+        </ellipse>
+
+        <!-- Right eye -->
+        <ellipse cx="48" cy="40" rx="6" ry="8" fill="url(#eyeGlow)">
+            <animate attributeName="opacity" values="1;0.7;1" dur="2s" repeatCount="indefinite"/>
+        </ellipse>
+
+        <!-- Eye highlights -->
+        <ellipse cx="31" cy="38" rx="2" ry="3" fill="#ffffff" opacity="0.9"/>
+        <ellipse cx="47" cy="38" rx="2" ry="3" fill="#ffffff" opacity="0.9"/>
+
+        <!-- Status indicator ring -->
+        <circle cx="40" cy="45" r="32" fill="none" stroke="#0084ff" stroke-width="1" opacity="0.3">
+            <animate attributeName="r" values="32;34;32" dur="4s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.3;0.6;0.3" dur="4s" repeatCount="indefinite"/>
         </circle>
-
-        <!-- Middle ring (counter-rotating) -->
-        <circle cx="40" cy="40" r="28" fill="none" stroke="#4dd9ff"
-                stroke-width="2" opacity="0.5" stroke-dasharray="3,3" filter="url(#cortanaGlowEffect)">
-            <animateTransform attributeName="transform" type="rotate"
-                            from="360 40 40" to="0 40 40" dur="6s" repeatCount="indefinite"/>
-        </circle>
-
-        <!-- Core sphere (Cortana's signature look) -->
-        <circle cx="40" cy="40" r="20" fill="url(#cortanaGlow)"
-                filter="url(#cortanaGlowEffect)" opacity="0.9">
-            <animate attributeName="r" values="20;22;20" dur="3s" repeatCount="indefinite"/>
-        </circle>
-
-        <!-- Inner bright core (pulsing) -->
-        <circle cx="40" cy="40" r="12" fill="#ffffff" opacity="0.8">
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite"/>
-        </circle>
-
-        <!-- Center bright spot -->
-        <circle cx="40" cy="40" r="4" fill="#ffffff" opacity="1">
-            <animate attributeName="r" values="4;6;4" dur="1.5s" repeatCount="indefinite"/>
-        </circle>
-
-        <!-- Cortana's holographic lines (top) -->
-        <path d="M 40 20 L 40 5" stroke="#4dd9ff" stroke-width="2" opacity="0.7"
-              stroke-linecap="round" filter="url(#cortanaBlur)">
-            <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
-        </path>
-
-        <!-- Holographic lines (bottom) -->
-        <path d="M 40 60 L 40 75" stroke="#4dd9ff" stroke-width="2" opacity="0.7"
-              stroke-linecap="round" filter="url(#cortanaBlur)">
-            <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" begin="1s" repeatCount="indefinite"/>
-        </path>
-
-        <!-- Holographic lines (left) -->
-        <path d="M 20 40 L 5 40" stroke="#4dd9ff" stroke-width="2" opacity="0.7"
-              stroke-linecap="round" filter="url(#cortanaBlur)">
-            <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" begin="0.5s" repeatCount="indefinite"/>
-        </path>
-
-        <!-- Holographic lines (right) -->
-        <path d="M 60 40 L 75 40" stroke="#4dd9ff" stroke-width="2" opacity="0.7"
-              stroke-linecap="round" filter="url(#cortanaBlur)">
-            <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" begin="1.5s" repeatCount="indefinite"/>
-        </path>
-
-        <!-- Diagonal accent lines (top-left) -->
-        <path d="M 26 26 L 15 15" stroke="#0084ff" stroke-width="1.5" opacity="0.5"
-              stroke-linecap="round" stroke-dasharray="2,2">
-            <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite"/>
-        </path>
-
-        <!-- Diagonal accent lines (top-right) -->
-        <path d="M 54 26 L 65 15" stroke="#0084ff" stroke-width="1.5" opacity="0.5"
-              stroke-linecap="round" stroke-dasharray="2,2">
-            <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" begin="1s" repeatCount="indefinite"/>
-        </path>
-
-        <!-- Diagonal accent lines (bottom-left) -->
-        <path d="M 26 54 L 15 65" stroke="#0084ff" stroke-width="1.5" opacity="0.5"
-              stroke-linecap="round" stroke-dasharray="2,2">
-            <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" begin="2s" repeatCount="indefinite"/>
-        </path>
-
-        <!-- Diagonal accent lines (bottom-right) -->
-        <path d="M 54 54 L 65 65" stroke="#0084ff" stroke-width="1.5" opacity="0.5"
-              stroke-linecap="round" stroke-dasharray="2,2">
-            <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" begin="0.5s" repeatCount="indefinite"/>
-        </path>
     </svg>
     """
 
