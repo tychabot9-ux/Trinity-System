@@ -1,0 +1,23 @@
+{
+  "max_connections_per_day": 50,
+  "delay_between_requests": [
+    30,
+    90
+  ],
+  "message_templates": [
+    "Hi {name}, I noticed your work in {field}. Would love to connect!",
+    "Hello {name}, your experience in {field} is impressive. Let's connect!",
+    "Hi {name}, I'm also in the {field} space. Would be great to connect!"
+  ],
+  "target_job_titles": [
+    "Software Engineer",
+    "Product Manager",
+    "Data Scientist",
+    "DevOps Engineer"
+  ],
+  "exclude_keywords": [
+    "recruiter",
+    "hiring",
+    "hr"
+  ]
+}
