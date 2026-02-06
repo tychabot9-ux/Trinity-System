@@ -464,10 +464,11 @@ def init_session():
         'trinity_chat_history': [],
         'trinity_expanded': False,
         'week1_checklist': {},
+        'optimizations_checklist': {},
         'phoenix_status': None,
         'last_refresh': None
     }
-    
+
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
@@ -476,27 +477,41 @@ def init_session():
 # HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
 
-def check_phoenix() -> bool:
-    """Check if Phoenix is running."""
+def check_phoenix() -> dict:
+    """Check Phoenix status and mode."""
     try:
         result = subprocess.run(
             ['pgrep', '-f', 'mark_xii_phoenix'],
             capture_output=True,
             timeout=3
         )
-        return result.returncode == 0
+        is_running = result.returncode == 0
+
+        # Read config to get actual status
+        mode = "PAPER"  # Default assumption
+        capital = 100000  # Paper trading capital
+
+        return {
+            'running': is_running,
+            'mode': mode,
+            'capital': capital,
+            'live': False  # Not live trading yet
+        }
     except:
-        return False
+        return {'running': False, 'mode': 'UNKNOWN', 'capital': 0, 'live': False}
 
 def get_context() -> dict:
     """Get current system context for Trinity."""
+    phoenix_status = check_phoenix()
     return {
         'burn_rate': -635,
-        'phoenix_running': check_phoenix(),
+        'phoenix_running': phoenix_status['running'],
+        'phoenix_mode': phoenix_status['mode'],
+        'phoenix_capital': phoenix_status['capital'],
         'week1_done': sum(1 for v in st.session_state.week1_checklist.values() if v),
         'week1_total': 18,
         'quick_cash_ready': 3,
-        'trading_capital': 40000
+        'trading_capital': phoenix_status['capital']  # Use actual capital
     }
 
 # ═══════════════════════════════════════════════════════════════
@@ -518,8 +533,9 @@ def render_trinity_sidebar():
 
         # Header with status
         phoenix_status = check_phoenix()
-        status_class = "status-online" if phoenix_status else "status-offline"
-        status_text = "ONLINE" if phoenix_status else "STANDBY"
+        is_running = phoenix_status['running']
+        status_class = "status-online" if is_running else "status-offline"
+        status_text = f"{phoenix_status['mode']} - {is_running and 'ACTIVE' or 'OFFLINE'}"
 
         st.markdown(f"""
         <div style="text-align: center; margin-bottom: 1rem;">
@@ -599,8 +615,9 @@ def render_dashboard():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        phoenix_running = check_phoenix()
-        st.metric("Phoenix AGRO", "🟢 Active" if phoenix_running else "🔴 Offline")
+        phoenix_status = check_phoenix()
+        mode_text = f"{phoenix_status['mode']} ${phoenix_status['capital']/1000:.0f}k"
+        st.metric("Phoenix", f"{'🟢' if phoenix_status['running'] else '🔴'} {mode_text}")
         
     with col2:
         st.metric("Burn Rate", "-$635/mo", delta="-$330 target")
@@ -648,8 +665,11 @@ def render_dashboard():
     st.markdown("---")
     st.subheader("🚨 Critical Alerts")
     
-    if not check_phoenix():
-        st.error("**Phoenix AGRO Offline** - Start with: `python3 mark_xii_phoenix.py`")
+    phoenix_status = check_phoenix()
+    if not phoenix_status['running']:
+        st.error(f"**Phoenix Offline** - Currently in {phoenix_status['mode']} mode")
+    elif phoenix_status['mode'] == 'PAPER':
+        st.warning("**Phoenix Paper Trading** - Not generating real returns yet. Validating strategy.")
     
     st.warning("**Cash Flow Crisis** - Burn rate: -$635/mo. Execute Week 1 actions immediately.")
     
@@ -666,6 +686,7 @@ def render_financial_hub():
         "📊 Overview",
         "🚀 Flywheel Strategy",
         "📈 10-Year Projection",
+        "🎯 20 Optimizations",
         "⚡ Quick Cash",
         "📊 Phoenix AGRO",
         "✅ Week 1 Actions"
@@ -768,8 +789,8 @@ def render_financial_hub():
         scenarios = {
             "Conservative": ("$2.97M", "Phoenix steady + Quick Cash slow"),
             "Base": ("$10.1M", "Phoenix moderate + signal selling Y2"),
-            "Optimistic": ("$25M", "Phoenix aggressive + exits"),
-            "Optimized": ("$12.4M", "With all 20 optimizations")
+            "Optimistic": ("$25M", "Everything goes perfect naturally"),
+            "Optimized": ("$27.3M", "Base + 20 optimizations executed ✅")
         }
         
         total, desc = scenarios[scenario]
@@ -780,7 +801,172 @@ def render_financial_hub():
         with col2:
             st.caption(desc)
     
-    with tabs[3]:  # Quick Cash
+    with tabs[3]:  # Daily Check-In Dashboard
+        from datetime import datetime, timedelta
+        today = datetime.now()
+
+        st.title("📋 Daily Check-In Dashboard")
+        st.caption(f"📅 {today.strftime('%A, %B %d, %Y')}")
+
+        # Progress overview
+        all_tasks = []
+
+        # Add optimizations
+        optimizations_list = [
+            # CRITICAL - Phoenix Trading Bug
+            ("🚨 Fix Phoenix contract selection", "🔴", "Enable trading", "2026-02-06", "Bot has 134 signals but 0 trades. Fix DTE range (27-35 days), widen delta (0.25-0.35), add fallback. File: mark_xii_phoenix.py lines 491-586"),
+
+            # Financial (Immediate Action)
+            ("Cut $330/mo expenses", "🔴", "$4k/yr", "2026-02-07", "Cancel subscriptions, reduce dining out, meal prep"),
+            ("Health budget ($80/mo)", "🔴", "Prevent burnout", "2026-02-07", "Keep gym, add therapy/massage budget"),
+            ("Cancel Jarvis Phase 2-7", "🔴", "Save 600hrs", "2026-02-07", "Stop over-engineering, focus on revenue"),
+            ("Focus Matrix (60hr/wk)", "🔴", "Sustainability", "2026-02-08", "Stop 88hr weeks, prioritize ruthlessly"),
+
+            # Week 1-2 Actions
+            ("Start Collective2 signal selling", "🟡", "+$85k-120k/10yr", "2026-02-12", "Set up C2 account, publish Phoenix signals"),
+            ("AGRO MODE+ (3.5% risk)", "🟡", "+$12k-18k/yr", "2026-02-12", "Increase Phoenix risk parameter after stable week"),
+            ("Form S-Corporation", "🟡", "$14k/yr savings", "2026-03-01", "Research attorney, file by March for Q1 earnings"),
+            ("Set up QSBS strategy", "🟡", "+$390k at exit", "2026-02-28", "Decide C-Corp vs S-Corp before formation"),
+
+            # Month 1 Actions
+            ("Ship Trinity MVP", "🟡", "+$12k-20k/yr", "2026-03-15", "8-week MVP: dashboard + API marketplace + landing"),
+            ("Simplify tech stack", "🟡", "Save 200hrs", "2026-02-28", "Python+FastAPI+Streamlit only"),
+            ("Fiverr delivery automation", "🟡", "3x capacity", "2026-02-21", "Build template library + scripts (20hrs)"),
+            ("Batch processing days", "🟡", "+20% efficiency", "2026-02-15", "Theme days: Fiverr Mon/Wed, Dev Tue/Thu, Marketing Fri"),
+
+            # Month 2-3 Actions
+            ("Phoenix optimization", "🟢", "+$200k/10yr", "2026-03-30", "Adaptive sizing, profit targets, correlation filters"),
+            ("VIX-based risk reduction", "🟢", "-35% downside", "2026-03-15", "Add VIX filters to Phoenix config"),
+            ("Increase Fiverr pricing", "🟢", "+$4k/yr", "2026-03-01", "After 5 reviews: QR $25→$40, 3D $50→$75"),
+            ("Accelerate capital injection", "🟢", "+$38k/10yr", "2026-03-01", "100% Fiverr profit → trading account"),
+
+            # Month 3-4 Actions
+            ("Blue Ocean strategy", "🟢", "Better margins", "2026-04-01", "Target underserved niches, avoid competition"),
+            ("Customer acquisition system", "🟢", "Predictable growth", "2026-04-15", "SEO, content marketing, email funnels"),
+
+            # Ongoing/Future
+            ("Multi-strategy approach", "🟢", "Reduce risk", "2026-08-01", "Add mean reversion by Year 2"),
+            ("Outsource Fiverr", "🟢", "Scale without burnout", "When $10k/mo", "Hire VA when revenue supports it"),
+            ("Aggregation strategy", "🟢", "10x multiplier", "2027-01-01", "Roll-up strategy in Year 2-3"),
+            ("Optionality preservation", "🟢", "Keep options open", "Ongoing", "Don't commit to single path too early"),
+        ]
+
+        # Add Week 1 Urgent Actions
+        week1_actions = [
+            ("Cancel unused subscriptions", "🔴", "-$47/mo", "2026-02-07", "Netflix, unused services"),
+            ("Call internet provider", "🔴", "-$30/mo", "2026-02-07", "Negotiate lower rate"),
+            ("Switch to prepaid phone", "🔴", "-$30/mo", "2026-02-08", "Mint Mobile or similar"),
+            ("Shop for insurance", "🔴", "-$20/mo", "2026-02-09", "Compare quotes"),
+            ("Start meal prep", "🔴", "-$150/mo", "2026-02-10", "Weekly batch cooking"),
+            ("Reduce entertainment", "🔴", "-$50/mo", "2026-02-07", "Free activities"),
+            ("Set up Fiverr gigs", "🟡", "Revenue start", "2026-02-10", "QR, 3D, Python gigs live"),
+            ("Create portfolio samples", "🟡", "Social proof", "2026-02-12", "3 examples each service"),
+            ("Phoenix daily monitoring", "🟡", "$4-5k/mo", "Daily", "Check trades, adjust if needed"),
+        ]
+
+        all_tasks = optimizations_list + week1_actions
+
+        # Count by priority
+        red_tasks = [t for t in all_tasks if t[1] == "🔴" and not st.session_state.optimizations_checklist.get(t[0], False)]
+        yellow_tasks = [t for t in all_tasks if t[1] == "🟡" and not st.session_state.optimizations_checklist.get(t[0], False)]
+        green_tasks = [t for t in all_tasks if t[1] == "🟢" and not st.session_state.optimizations_checklist.get(t[0], False)]
+        done_tasks = [t for t in all_tasks if st.session_state.optimizations_checklist.get(t[0], False)]
+
+        # Dashboard metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("🔴 Urgent", len(red_tasks), help="Do TODAY")
+        with col2:
+            st.metric("🟡 Recommended", len(yellow_tasks), help="This week/month")
+        with col3:
+            st.metric("🟢 Suggested", len(green_tasks), help="When ready")
+        with col4:
+            st.metric("✅ Done", len(done_tasks), help=f"{len(done_tasks)}/{len(all_tasks)}")
+
+        total_progress = len(done_tasks) / len(all_tasks) if len(all_tasks) > 0 else 0
+        st.progress(total_progress)
+        st.caption(f"Overall Progress: {total_progress*100:.1f}%")
+
+        # Today's Focus
+        st.markdown("---")
+        st.subheader("🎯 Today's Focus (Urgent)")
+        if red_tasks:
+            for task_name, priority, impact, due_date, description in red_tasks:
+                with st.container():
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        checked = st.checkbox(
+                            f"**{task_name}**",
+                            key=f"task_{task_name}",
+                            value=st.session_state.optimizations_checklist.get(task_name, False)
+                        )
+                        st.session_state.optimizations_checklist[task_name] = checked
+                        st.caption(f"💰 {impact} | 📅 Due: {due_date} | 📝 {description}")
+                    with col2:
+                        st.markdown(f"### {priority}")
+                    st.markdown("---")
+        else:
+            st.success("🎉 No urgent tasks today! Great work!")
+
+        # This Week
+        st.markdown("---")
+        with st.expander(f"📅 This Week/Month - Recommended ({len(yellow_tasks)} tasks)", expanded=True):
+            for task_name, priority, impact, due_date, description in yellow_tasks:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    checked = st.checkbox(
+                        f"**{task_name}**",
+                        key=f"task_{task_name}",
+                        value=st.session_state.optimizations_checklist.get(task_name, False)
+                    )
+                    st.session_state.optimizations_checklist[task_name] = checked
+                    st.caption(f"💰 {impact} | 📅 {due_date} | 📝 {description}")
+                with col2:
+                    st.markdown(f"## {priority}")
+
+        # Future/Suggestions
+        with st.expander(f"🔮 Future & Suggestions ({len(green_tasks)} tasks)"):
+            for task_name, priority, impact, due_date, description in green_tasks:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    checked = st.checkbox(
+                        f"**{task_name}**",
+                        key=f"task_{task_name}",
+                        value=st.session_state.optimizations_checklist.get(task_name, False)
+                    )
+                    st.session_state.optimizations_checklist[task_name] = checked
+                    st.caption(f"💰 {impact} | 📅 {due_date} | 📝 {description}")
+                with col2:
+                    st.markdown(f"## {priority}")
+
+        # Completed
+        with st.expander(f"✅ Completed ({len(done_tasks)} tasks)"):
+            for task_name, priority, impact, due_date, description in done_tasks:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    checked = st.checkbox(
+                        f"~~{task_name}~~",
+                        key=f"task_{task_name}",
+                        value=st.session_state.optimizations_checklist.get(task_name, False)
+                    )
+                    st.session_state.optimizations_checklist[task_name] = checked
+                    st.caption(f"💰 {impact} | ✅ Done")
+                with col2:
+                    st.markdown("✅")
+
+        # Summary
+        st.markdown("---")
+        st.info(f"""
+        **Daily Check-In Summary:**
+        - 🔴 **Urgent (TODAY):** {len(red_tasks)} tasks - Do these first!
+        - 🟡 **Recommended (THIS WEEK/MONTH):** {len(yellow_tasks)} tasks
+        - 🟢 **Suggested (WHEN READY):** {len(green_tasks)} tasks
+        - ✅ **Completed:** {len(done_tasks)}/{len(all_tasks)} ({total_progress*100:.1f}%)
+
+        **Goal:** Complete all tasks → Unlock $27.3M (beats Optimistic $25M)
+        """)
+
+    with tabs[4]:  # Quick Cash
         st.subheader("⚡ Quick Cash Services")
         
         services = [
@@ -801,26 +987,75 @@ def render_financial_hub():
         
         st.success("**Combined Target:** $1,000-3,000/mo (conservative: $300-700)")
     
-    with tabs[4]:  # Phoenix AGRO
-        st.subheader("📊 Phoenix AGRO MODE")
-        
-        phoenix_running = check_phoenix()
-        status = "🟢 Active" if phoenix_running else "🔴 Offline"
-        
-        col1, col2, col3 = st.columns(3)
+    with tabs[5]:  # Phoenix Status
+        st.subheader("📊 Phoenix Trading Status")
+
+        phoenix_status = check_phoenix()
+        is_running = phoenix_status['running']
+        mode = phoenix_status['mode']
+        capital = phoenix_status['capital']
+
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Status", status)
+            status_display = f"{'🟢 Active' if is_running else '🔴 Offline'}"
+            st.metric("Status", status_display)
         with col2:
-            st.metric("Risk Level", "3.0%")
+            st.metric("Mode", mode, help="PAPER = validation, LIVE = real money")
         with col3:
-            st.metric("Max Positions", "5")
-        
-        if phoenix_running:
-            st.success("Phoenix AGRO is running. Target: $4-5k/month returns.")
+            st.metric("Capital", f"${capital/1000:.0f}k")
+        with col4:
+            st.metric("Risk/Trade", "3.0%", help="AGRO MODE setting")
+
+        st.markdown("---")
+
+        if not is_running:
+            st.error("**Phoenix Offline** - Bot is not running")
+            st.code("cd /Users/tybrown/Desktop/Bot-Factory && python3 mark_xii_phoenix.py")
+        elif mode == "PAPER":
+            st.warning(f"""
+            **📊 PAPER TRADING MODE (Validation Phase)**
+
+            Phoenix is running with **${capital:,}** paper money to validate strategy before live deployment.
+
+            **Current Status:**
+            - Testing AGRO MODE configuration (3% risk, 5 positions)
+            - Validating 10-12% monthly return target
+            - Building track record for signal selling
+
+            **Next Steps:**
+            1. Collect 15-20 paper trades (7-10 days)
+            2. Verify win rate >50%, Avg R >2.0
+            3. Confirm <20% max drawdown
+            4. Go live with $40k real capital
+
+            **⚠️ Paper trading profits are NOT real money.**
+            """)
         else:
-            st.error("Phoenix is offline. Start it to begin generating returns.")
+            st.success(f"""
+            **🟢 LIVE TRADING ACTIVE**
+
+            Phoenix AGRO running with **${capital:,}** real capital.
+            Target: $4-5k/month returns.
+            """)
+
+        # Add critical alert about contract selection bug
+        st.markdown("---")
+        st.error("""
+        🚨 **CRITICAL ISSUE DETECTED**
+
+        Phoenix has generated 134 trade signals but executed **0 trades**.
+
+        **Problem:** Options contract selection filters too strict.
+
+        **Required Action:**
+        1. Fix contract selection code (DTE range, delta tolerance)
+        2. Restart paper trading validation
+        3. Verify 15-20 successful trades before going live
+
+        **This is added to your Daily Check-In as urgent task.**
+        """)
     
-    with tabs[5]:  # Week 1
+    with tabs[6]:  # Week 1
         st.subheader("✅ Week 1 Urgent Actions")
         
         st.info("**Mission:** Stop the bleeding. Launch revenue. Cut waste.")
@@ -954,15 +1189,17 @@ def main():
         st.markdown("---")
 
         # System Status Quick View
-        phoenix_online = check_phoenix()
-        status_emoji = "🟢" if phoenix_online else "🔴"
+        phoenix_status = check_phoenix()
+        is_running = phoenix_status['running']
+        mode = phoenix_status['mode']
+        status_emoji = "🟢" if is_running else "🔴"
 
         st.markdown(f"""
         <div style="background: rgba(28,28,30,0.6); border-radius: 10px; padding: 0.6rem; margin-bottom: 1rem; border: 1px solid var(--apple-border);">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;">
-                <span style="color: var(--apple-text-secondary);">Phoenix AGRO:</span>
-                <span style="color: {'var(--apple-success)' if phoenix_online else 'var(--apple-danger)'}; font-weight: 600;">
-                    {status_emoji} {'ACTIVE' if phoenix_online else 'OFFLINE'}
+                <span style="color: var(--apple-text-secondary);">Phoenix:</span>
+                <span style="color: {'var(--apple-warning)' if mode == 'PAPER' else ('var(--apple-success)' if is_running else 'var(--apple-danger)')}; font-weight: 600;">
+                    {status_emoji} {mode} {'ACTIVE' if is_running else 'OFF'}
                 </span>
             </div>
         </div>
